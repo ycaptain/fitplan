@@ -1,1 +1,0 @@
-"""FitPlan AI backend application."""
