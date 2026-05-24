@@ -30,7 +30,19 @@ variable weekly schedule. Goals are bulk, cut, or general fitness.
 The differentiator is explicit AI search and optimization with
 human-readable explanations.
 
-## 4. Scope
+## 4. MVP definition
+
+The MVP guarantees that the following pipeline runs end-to-end:
+
+- CSP with forward checking generates a feasible weekly plan
+- Hill climbing performs minimal-disruption replanning
+- The frontend renders the calendar, score breakdown, diff, and explain
+- At least one baseline (greedy) runs in the offline evaluation
+
+Advanced features (A\*, simulated annealing, genetic algorithm) layer on
+top of the MVP pipeline once it is stable.
+
+## 5. Scope
 
 ### In
 
@@ -44,7 +56,10 @@ human-readable explanations.
   - changed user state (sleep, fatigue)
   - manual edit
 - Score card and explanation for every plan
-- Three baselines for offline comparison
+- Strategy routing exposed to the user as three modes:
+  Generate, Minimal Disruption, Re-optimize
+- Offline evaluation against a greedy baseline (additional baselines as
+  stretch)
 
 ### Out
 
@@ -53,48 +68,62 @@ human-readable explanations.
 - Multi-user / mobile-native apps
 - Natural-language input parsing
 - Multi-week mesocycle planning
+- In-product algorithm-comparison lab page
 - Any pre-trained model, RL training, or off-the-shelf ML implementations
 
-## 5. Architecture
+## 6. Architecture
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │  Frontend (Next.js)                                  │
 │  /onboarding   /plan   /history   /settings          │
+│  Calendar  ScoreCard  ExplainDrawer  StrategyBadge   │
 └────────────────────────┬─────────────────────────────┘
                          │ REST
 ┌────────────────────────▼─────────────────────────────┐
 │  Backend (FastAPI)                                   │
-│  ┌───────────────────┐   ┌──────────────────────────┐│
-│  │ Initial Generator │   │ Adaptability Engine      ││
-│  │ Genetic Algorithm │   │  Trigger normalizer      ││
-│  │                   │   │  CSP re-validation       ││
-│  │                   │   │  Hill climbing / SA      ││
-│  │                   │   │  GA fallback             ││
-│  └───────────────────┘   └──────────────────────────┘│
-│  ┌───────────────────────────────────────────────────┐│
-│  │ Shared core: domain models, scoring, explain      ││
-│  └───────────────────────────────────────────────────┘│
+│                                                      │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │ Strategy Routing                                │ │
+│  │ Generate  →  Initial Solver                     │ │
+│  │ Minimal Disruption  →  HC                       │ │
+│  │ Re-optimize  →  SA / GA (advanced)              │ │
+│  └─────────┬───────────────────────┬───────────────┘ │
+│            ▼                       ▼                 │
+│  ┌──────────────────┐   ┌──────────────────────────┐ │
+│  │ Initial Solver   │   │ Adaptability Engine      │ │
+│  │  CSP-BT + FC     │   │  Trigger normalizer      │ │
+│  │  [+ GA opt.]     │   │  CSP re-validation       │ │
+│  │  [+ A* opt.]     │   │  HC / SA / GA fallback   │ │
+│  └──────────────────┘   └──────────────────────────┘ │
+│                                                      │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │ Shared Core                                     │ │
+│  │  domain models, constraints, scoring, explain   │ │
+│  │  strategy trace                                 │ │
+│  └─────────────────────────────────────────────────┘ │
+│                                                      │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │ Baselines (offline eval)                        │ │
+│  │  greedy [MVP] · random restart · rule-based     │ │
+│  └─────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────┘
 ```
 
-The dispatch logic collapses to two questions:
+The strategy router is intentionally simple: each user-facing mode maps
+to one or two algorithms. There is no automatic meta-planner.
 
-```
-Is this an initial plan or a replan?
-  initial → GA
-  replan  → adaptability engine
+| User mode | Default algorithm | Purpose |
+|-----------|-------------------|---------|
+| Generate | CSP-BT + FC | Find a feasible weekly plan |
+| Minimal Disruption | Hill Climbing | Keep the existing plan, fix conflicts only |
+| Re-optimize | SA / GA | Explore alternative whole-week plans |
 
-If replan, how big is the change?
-  small (<= 30% affected sessions) → hill climbing
-  large or HC stuck                → simulated annealing → GA fallback
-```
-
-## 6. Adaptability
+## 7. Adaptability
 
 A weekly plan is rarely worth discarding when one session conflicts.
-Adaptability is structured as four steps so the original plan is kept
-as much as possible.
+Adaptability is structured as four steps so the original plan is
+preserved when possible.
 
 ```
 Triggers  →  CSP re-validation  →  Local replan  →  Explanation
@@ -115,8 +144,7 @@ unaware of the trigger source.
 ### CSP re-validation
 
 Backtracking with forward checking inspects the current plan and marks
-each session `locked` if it still satisfies every hard constraint
-(recovery interval, fixed-event clearance, weekly intensity cap).
+each session `locked` if it still satisfies every hard constraint.
 Only unlocked sessions enter the replan step.
 
 ### Local replan
@@ -124,8 +152,8 @@ Only unlocked sessions enter the replan step.
 Hill climbing starts from the current plan with a disturbance penalty
 that discourages unnecessary moves. If the affected scope is large or
 hill climbing stalls, simulated annealing takes over. If neither finds
-a feasible plan, GA runs as a fallback with the current plan seeded
-into the initial population as an elite individual.
+a feasible plan, GA runs as a fallback with the current plan seeded as
+an elite individual.
 
 ### Explanation
 
@@ -133,13 +161,13 @@ Each replan emits a diff (`moved`, `removed`, `added`), a disturbance
 count, a recovery-score delta, a total-score delta, and a list of
 constraints that triggered the change.
 
-## 7. User journeys
+## 8. User journeys
 
 ### Journey A — initial plan
 
 1. Onboarding form: goal, split, frequency, fixed events, preferences
-2. GA generates a plan (showing generation count and best fitness)
-3. Calendar, score card, and explanation drawer
+2. Strategy routing selects the initial solver
+3. Calendar, score card, strategy badge, and explanation drawer
 
 ### Journey B — replan after a disturbance
 
@@ -150,54 +178,51 @@ constraints that triggered the change.
 4. Hill climbing or simulated annealing produces a revised plan
 5. Diff view, metrics, and accept / reject
 
-## 8. AI methods used
+## 9. AI methods used
 
-| Method | Where it runs |
-|--------|---------------|
-| Genetic algorithm | Initial plan generation, replan fallback |
-| Backtracking + forward checking | Re-validation before replanning |
-| Hill climbing | Small-scope replan, with disturbance penalty |
-| Simulated annealing | Large-scope replan |
-| Baselines (random restart, greedy, rule-based) | Offline comparison |
+| Method | Tier | Where it runs |
+|--------|------|---------------|
+| Backtracking + forward checking | MVP | Initial Solver, re-validation |
+| Hill climbing | MVP | Small-scope replan with disturbance penalty |
+| Greedy baseline | MVP | Offline comparison |
+| Genetic algorithm | Advanced | Whole-plan optimization on top of CSP |
+| Simulated annealing | Advanced | Large-scope replan |
+| A\* / Beam | Stretch | Heuristic alternative to CSP for initial solver |
+| Random restart, rule-based | Stretch | Additional baselines |
 
 Every method runs in a real user-facing scenario.
 
-## 9. Data model
+## 10. Data model
 
 The canonical Pydantic models are in `backend/app/ai/core/models.py`.
 
 Key types:
 
 - `SessionType`, `TrainingSplit`, `FixedEvent`, `UserState`, `Constraint`
-- `ScheduledSession`, `Scores`, `AlgoStep`, `Plan`
+- `ScheduledSession`, `Scores`, `Plan`
+- `StrategyStep` (algorithm, role, nodes, iterations, time, score)
 - `PlanDelta`, `ReplanDiff`, `ReplanMetrics`, `ReplanResult`
 
 The TypeScript mirror is in `frontend/lib/types.ts`.
 
-## 10. Evaluation
+## 11. Evaluation
 
 Offline evaluation (`scripts/eval/run_eval.py`) runs each algorithm and
 baseline over a generated set of disturbance scenarios.
 
 ### Metrics
 
-- Initial generation: GA convergence generations, runtime, fitness,
+- Initial generation: convergence iterations, runtime, fitness,
   hard-constraint violations
 - Adaptability: disturbance amount, recovery delta, score delta,
   one-shot feasibility rate
 
 ### Baselines
 
-- Random restart (re-run GA from scratch)
-- Greedy re-insertion (place conflicting sessions in nearest free slot)
-- Rule-based replanner (Fitbod-style)
+- Greedy re-insertion (MVP)
+- Random restart, rule-based replanner (stretch)
 
-### Scenario coverage
-
-At least 50 disturbance scenarios across the four trigger types, with
-single-conflict and multi-conflict variants.
-
-## 11. Tech stack
+## 12. Tech stack
 
 - Backend: FastAPI, Pydantic, SQLite
 - Frontend: Next.js 15 (App Router), TypeScript, Tailwind
