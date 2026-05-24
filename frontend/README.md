@@ -2,10 +2,13 @@
 
 Next.js 15 (App Router) with TypeScript and Tailwind.
 
+Package manager: **pnpm** (pinned via `packageManager` in `package.json`).
+Install once: `npm install -g pnpm@9` or `corepack enable`.
+
 ## Dev
 
 ```bash
-make setup-frontend
+make setup-frontend       # pnpm install
 make frontend             # http://localhost:3000
 ```
 
