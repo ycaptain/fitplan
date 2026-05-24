@@ -48,12 +48,17 @@ class Constraint(BaseModel):
 
 
 class ScheduledSession(BaseModel):
+    id: str
     session_type_id: str
     day: int
     start: str
     duration_min: int
     locked: bool = False
     status: Literal["planned", "done", "missed"] = "planned"
+
+    @staticmethod
+    def derive_id(day: int, session_type_id: str, start: str) -> str:
+        return f"{day}-{session_type_id}-{start}"
 
 
 class Scores(BaseModel):

@@ -50,6 +50,7 @@ export interface Constraint {
 }
 
 export interface ScheduledSession {
+  id: string;
   session_type_id: string;
   day: number;
   start: string;
