@@ -9,8 +9,8 @@ CS5100 Foundations of AI final project.
 
 ## Quickstart
 
-Prerequisites: Python 3.11+, Node.js 20+, and **pnpm 9**
-(`npm install -g pnpm@9` or `corepack enable`).
+Prerequisites: Python 3.11+, Node.js 26+, and **pnpm 11**
+(`npm install -g pnpm@11` or `corepack enable`).
 
 ```bash
 make setup        # install backend venv + frontend deps (pnpm)
