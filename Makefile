@@ -6,13 +6,13 @@ setup-backend:
 	cd backend && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -e ".[dev]"
 
 setup-frontend:
-	cd frontend && npm install
+	cd frontend && pnpm install
 
 backend:
 	cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000
 
 frontend:
-	cd frontend && npm run dev
+	cd frontend && pnpm dev
 
 dev:
 	@echo "Open two terminals:"
@@ -27,7 +27,7 @@ eval:
 
 lint:
 	cd backend && .venv/bin/ruff check app tests
-	cd frontend && npm run lint
+	cd frontend && pnpm lint
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +
