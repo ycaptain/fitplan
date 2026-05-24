@@ -21,6 +21,10 @@ app/
 
 ## Dev
 
+Requires Python 3.11+. `make setup-backend` auto-picks the first available
+`python3.13` / `3.12` / `3.11` on PATH; override with
+`make setup-backend PYTHON=/path/to/python3.x` if needed.
+
 ```bash
 make setup-backend
 make backend            # http://localhost:8000
