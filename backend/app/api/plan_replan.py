@@ -1,27 +1,30 @@
-"""POST /api/plan/replan — adaptive re-planning."""
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+
+from app.ai.core.models import (
+    Plan,
+    ReplanDiff,
+    ReplanMetrics,
+    ReplanRequest,
+    ReplanResult,
+    Scores,
+)
 
 router = APIRouter()
 
 
-class ReplanRequest(BaseModel):
-    plan_id: str
-    trigger_type: str = "fixed_event_added"
-    payload: dict = {}
-
-
-class ReplanResponse(BaseModel):
-    plan_id: str
-    message: str
-    diff: dict = {}
-
-
-@router.post("/plan/replan", response_model=ReplanResponse)
-async def replan(req: ReplanRequest) -> ReplanResponse:
-    return ReplanResponse(
-        plan_id=req.plan_id,
-        message=f"TODO: re-validate + replan for trigger={req.trigger_type}",
-        diff={"moved": [], "removed": [], "added": []},
+@router.post("/plan/replan", response_model=ReplanResult)
+async def replan(req: ReplanRequest) -> ReplanResult:
+    return ReplanResult(
+        plan=Plan(
+            id=req.plan_id,
+            generated_at=datetime.now(UTC).isoformat(),
+            sessions=[],
+            scores=Scores(),
+            strategy_trace=[],
+        ),
+        diff=ReplanDiff(),
+        metrics=ReplanMetrics(),
+        reason="",
     )
