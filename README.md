@@ -22,6 +22,14 @@ make eval         # offline evaluation
 
 Run `make backend` and `make frontend` in two terminals.
 
+`make setup-backend` auto-detects `python3.13` / `3.12` / `3.11` on PATH and
+ignores whichever Python an active conda/virtualenv exposes. To pin a specific
+interpreter, pass `PYTHON=`:
+
+```bash
+make setup-backend PYTHON=/opt/homebrew/bin/python3.12
+```
+
 ## Documentation
 
 - [Product Design](docs/product-design.md)
