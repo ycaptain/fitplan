@@ -43,12 +43,20 @@ A planned session in the week.
 
 | Field | Type | Notes |
 |-------|------|-------|
+| id | str | stable identifier, referenced by `PlanDelta.affected_session_ids` and `ReplanDiff.{moved,removed,added}` |
 | session_type_id | str | |
 | day | int | 0–6 |
 | start | str | HH:MM |
 | duration_min | int | |
 | locked | bool | set by CSP re-validation |
 | status | "planned" \| "done" \| "missed" | |
+
+**Convention for `id`:** unless the producer needs something more specific,
+derive it as `{day}-{session_type_id}-{start}` (helper:
+`ScheduledSession.derive_id`). The id only needs to be stable within a single
+plan revision — replanners may regenerate ids when a session moves, but the
+`ReplanDiff` must still reference the pre-replan ids for `moved` / `removed`
+and the post-replan ids for `added`.
 
 ### `Scores`
 

@@ -38,6 +38,7 @@ class LocalReplanner(Protocol):
         *,
         max_iter: int = 100,
         disturbance_penalty: float = 0.0,
+        random_seed: int | None = None,
     ) -> Plan: ...
 
 
