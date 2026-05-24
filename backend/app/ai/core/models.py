@@ -1,5 +1,3 @@
-"""Pydantic models shared across the scheduling pipeline."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -66,9 +64,10 @@ class Scores(BaseModel):
     total: float = 0.0
 
 
-class AlgoStep(BaseModel):
+class StrategyStep(BaseModel):
     algorithm: str
-    role: Literal["generate", "revalidate", "replan"]
+    role: Literal["feasibility", "optimize", "replan"]
+    nodes: int = 0
     iterations: int = 0
     time_ms: int = 0
     score_after: float = 0.0
@@ -79,7 +78,7 @@ class Plan(BaseModel):
     generated_at: str
     sessions: list[ScheduledSession] = Field(default_factory=list)
     scores: Scores = Field(default_factory=Scores)
-    algorithm_trace: list[AlgoStep] = Field(default_factory=list)
+    strategy_trace: list[StrategyStep] = Field(default_factory=list)
 
 
 class PlanDelta(BaseModel):
@@ -110,3 +109,43 @@ class ReplanResult(BaseModel):
     diff: ReplanDiff = Field(default_factory=ReplanDiff)
     metrics: ReplanMetrics = Field(default_factory=ReplanMetrics)
     reason: str = ""
+
+
+class Preferences(BaseModel):
+    preferred_time_of_day: Literal["morning", "evening", "any"] = "any"
+    max_session_duration_min: int = 90
+
+
+class GeneratePlanRequest(BaseModel):
+    goal: Goal = "general"
+    split: SplitName = "ppl"
+    sessions_per_week: int = 4
+    fixed_events: list[FixedEvent] = Field(default_factory=list)
+    preferences: Preferences = Field(default_factory=Preferences)
+
+
+ReplanMode = Literal["minimal_disruption", "re_optimize"]
+
+
+class ReplanRequest(BaseModel):
+    plan_id: str
+    trigger_type: Literal[
+        "fixed_event_added",
+        "session_missed",
+        "state_changed",
+        "manual_edit",
+    ]
+    payload: dict = Field(default_factory=dict)
+    mode: ReplanMode = "minimal_disruption"
+
+
+class ConstraintViolation(BaseModel):
+    constraint_id: str
+    session_ids: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
+class CSPResult(BaseModel):
+    locked_session_ids: list[str] = Field(default_factory=list)
+    violations: list[ConstraintViolation] = Field(default_factory=list)
+    is_feasible: bool = True
