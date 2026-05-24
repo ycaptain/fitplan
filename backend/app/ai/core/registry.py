@@ -1,14 +1,19 @@
-"""String-keyed algorithm registry.
-
-Algorithms (generators, replanners, baselines) register themselves under a
-stable name so orchestrators and the evaluation harness can dispatch by
-string without importing concrete implementations.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Final
+
+
+class AlgorithmKey:
+    CSP_BT_FC: Final[str] = "csp_bt_fc"
+    GA_GENERATE: Final[str] = "ga_generate"
+    HILL_CLIMBING: Final[str] = "hill_climbing"
+    SIMULATED_ANNEALING: Final[str] = "simulated_annealing"
+    ORCHESTRATE_REPLAN: Final[str] = "orchestrate_replan"
+    GREEDY_BASELINE: Final[str] = "greedy_baseline"
+    RANDOM_RESTART: Final[str] = "random_restart"
+    RULE_BASED: Final[str] = "rule_based"
+
 
 _REGISTRY: dict[str, Callable[..., Any]] = {}
 
