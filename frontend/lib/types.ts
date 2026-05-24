@@ -4,7 +4,7 @@ export type Goal = "bulk" | "cut" | "general";
 export type SplitName = "ppl" | "upper_lower" | "full_body";
 export type ConstraintKind = "hard" | "soft";
 export type SessionStatus = "planned" | "done" | "missed";
-export type AlgoRole = "generate" | "revalidate" | "replan";
+export type StrategyRole = "feasibility" | "optimize" | "replan";
 export type TriggerType =
   | "fixed_event_added"
   | "session_missed"
@@ -66,9 +66,10 @@ export interface Scores {
   total: number;
 }
 
-export interface AlgoStep {
+export interface StrategyStep {
   algorithm: string;
-  role: AlgoRole;
+  role: StrategyRole;
+  nodes: number;
   iterations: number;
   time_ms: number;
   score_after: number;
@@ -79,7 +80,7 @@ export interface Plan {
   generated_at: string;
   sessions: ScheduledSession[];
   scores: Scores;
-  algorithm_trace: AlgoStep[];
+  strategy_trace: StrategyStep[];
 }
 
 export interface PlanDelta {
@@ -105,4 +106,38 @@ export interface ReplanResult {
   diff: ReplanDiff;
   metrics: ReplanMetrics;
   reason: string;
+}
+
+export type ReplanMode = "minimal_disruption" | "re_optimize";
+
+export interface Preferences {
+  preferred_time_of_day: "morning" | "evening" | "any";
+  max_session_duration_min: number;
+}
+
+export interface GeneratePlanRequest {
+  goal: Goal;
+  split: SplitName;
+  sessions_per_week: number;
+  fixed_events: FixedEvent[];
+  preferences: Preferences;
+}
+
+export interface ReplanRequest {
+  plan_id: string;
+  trigger_type: TriggerType;
+  payload: Record<string, unknown>;
+  mode: ReplanMode;
+}
+
+export interface ConstraintViolation {
+  constraint_id: string;
+  session_ids: string[];
+  message: string;
+}
+
+export interface CSPResult {
+  locked_session_ids: string[];
+  violations: ConstraintViolation[];
+  is_feasible: boolean;
 }
