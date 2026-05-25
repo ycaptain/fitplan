@@ -67,6 +67,97 @@
         "total": 6.0
       },
       "strategy_trace": []
+    },
+    {
+      "id": "ul-base-001",
+      "generated_at": "2026-05-25T18:00:00Z",
+      "sessions": [
+        {
+          "id": "0-upper-19:00",
+          "session_type_id": "upper",
+          "day": 0,
+          "start": "19:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "1-lower-19:00",
+          "session_type_id": "lower",
+          "day": 1,
+          "start": "19:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "3-upper-19:00",
+          "session_type_id": "upper",
+          "day": 3,
+          "start": "19:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "4-lower-19:00",
+          "session_type_id": "lower",
+          "day": 4,
+          "start": "19:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        }
+      ],
+      "scores": {
+        "recovery": 2.0,
+        "consistency": 0.0,
+        "conflicts": 0,
+        "balance": 0.0,
+        "total": 2.0
+      },
+      "strategy_trace": []
+    },
+    {
+      "id": "fb-base-001",
+      "generated_at": "2026-05-25T18:00:00Z",
+      "sessions": [
+        {
+          "id": "0-full-17:30",
+          "session_type_id": "full",
+          "day": 0,
+          "start": "17:30",
+          "duration_min": 75,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "2-full-17:30",
+          "session_type_id": "full",
+          "day": 2,
+          "start": "17:30",
+          "duration_min": 75,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "4-full-17:30",
+          "session_type_id": "full",
+          "day": 4,
+          "start": "17:30",
+          "duration_min": 75,
+          "locked": false,
+          "status": "planned"
+        }
+      ],
+      "scores": {
+        "recovery": 3.0,
+        "consistency": 0.0,
+        "conflicts": 0,
+        "balance": 0.0,
+        "total": 3.0
+      },
+      "strategy_trace": []
     }
   ],
   "scenarios": [
@@ -88,6 +179,53 @@
       "expected": {
         "moved_ids": ["3-push-18:00"],
         "max_disturbance": 2
+      }
+    },
+    {
+      "id": "scn-missed-mon-upper",
+      "plan_id": "ul-base-001",
+      "description": "User missed Monday upper; replanner should reflow the upper session.",
+      "trigger": {
+        "trigger_type": "session_missed",
+        "payload": {"session_id": "0-upper-19:00"},
+        "affected_session_ids": ["0-upper-19:00"]
+      },
+      "expected": {
+        "moved_ids": ["0-upper-19:00"],
+        "max_disturbance": 1
+      }
+    },
+    {
+      "id": "scn-state-changed-low-sleep",
+      "plan_id": "ul-base-001",
+      "description": "Low sleep on Tue lowers intensity tolerance; replanner reshuffles Tue lower.",
+      "trigger": {
+        "trigger_type": "state_changed",
+        "payload": {
+          "date": "2026-05-26",
+          "sleep_hours": 4.5,
+          "perceived_fatigue": 8,
+          "missed_last_session": false
+        },
+        "affected_session_ids": ["1-lower-19:00"]
+      },
+      "expected": {
+        "moved_ids": ["1-lower-19:00"],
+        "max_disturbance": 2
+      }
+    },
+    {
+      "id": "scn-manual-move-wed-full",
+      "plan_id": "fb-base-001",
+      "description": "User drags Wed full-body session to Thu morning; replanner accepts the manual edit.",
+      "trigger": {
+        "trigger_type": "manual_edit",
+        "payload": {"session_id": "2-full-17:30", "new_day": 3, "new_start": "08:00"},
+        "affected_session_ids": ["2-full-17:30"]
+      },
+      "expected": {
+        "moved_ids": ["2-full-17:30"],
+        "max_disturbance": 1
       }
     }
   ]
