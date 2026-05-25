@@ -1,4 +1,94 @@
 {
-  "plans": [],
-  "scenarios": []
+  "plans": [
+    {
+      "id": "ppl-base-001",
+      "generated_at": "2026-05-25T18:00:00Z",
+      "sessions": [
+        {
+          "id": "0-push-18:00",
+          "session_type_id": "push",
+          "day": 0,
+          "start": "18:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "1-pull-18:00",
+          "session_type_id": "pull",
+          "day": 1,
+          "start": "18:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "2-legs-18:00",
+          "session_type_id": "legs",
+          "day": 2,
+          "start": "18:00",
+          "duration_min": 75,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "3-push-18:00",
+          "session_type_id": "push",
+          "day": 3,
+          "start": "18:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "4-pull-18:00",
+          "session_type_id": "pull",
+          "day": 4,
+          "start": "18:00",
+          "duration_min": 60,
+          "locked": false,
+          "status": "planned"
+        },
+        {
+          "id": "5-legs-18:00",
+          "session_type_id": "legs",
+          "day": 5,
+          "start": "18:00",
+          "duration_min": 75,
+          "locked": false,
+          "status": "planned"
+        }
+      ],
+      "scores": {
+        "recovery": 6.0,
+        "consistency": 0.0,
+        "conflicts": 0,
+        "balance": 0.0,
+        "total": 6.0
+      },
+      "strategy_trace": []
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scn-fixed-event-collides-thu-push",
+      "plan_id": "ppl-base-001",
+      "description": "A 18:30-20:00 meeting lands on Thu and collides with Thu Push; HC should move Thu Push.",
+      "trigger": {
+        "trigger_type": "fixed_event_added",
+        "payload": {
+          "id": "evt-thu-meeting",
+          "day_of_week": 3,
+          "start": "18:30",
+          "end": "20:00",
+          "label": "Advisor meeting"
+        },
+        "affected_session_ids": ["3-push-18:00"]
+      },
+      "expected": {
+        "moved_ids": ["3-push-18:00"],
+        "max_disturbance": 2
+      }
+    }
+  ]
 }
