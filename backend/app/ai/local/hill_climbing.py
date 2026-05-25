@@ -10,7 +10,7 @@ from app.ai.core.models import (
     ScheduledSession,
     SessionType,
 )
-from app.ai.core.scoring import score_plan
+from app.ai.core.scoring import count_hard_violations, score_plan
 
 DAYS_IN_WEEK: Final[int] = 7
 SIDEWAYS_LIMIT: Final[int] = 10
@@ -37,7 +37,7 @@ def hill_climbing(
 
     for _ in range(max_iter):
         best_neighbour: Plan | None = None
-        best_neighbour_score: tuple[float, int] | None = None
+        best_neighbour_score: tuple[int, float, int] | None = None
 
         candidates = list(_neighbours(current))
         rng.shuffle(candidates)
@@ -78,12 +78,13 @@ def _fitness(
     origin_days: dict[str, int],
     disturbance_penalty: float,
     session_types: dict[str, SessionType] | None,
-) -> tuple[float, int]:
+) -> tuple[int, float, int]:
+    hard = count_hard_violations(plan, constraints, session_types)
     base = score_plan(plan, constraints, session_types).total
     moves = _moves_from_origin(plan, origin_days)
     if disturbance_penalty:
         base -= disturbance_penalty * moves
-    return (base, -moves)
+    return (-hard, base, -moves)
 
 
 def _moves_from_origin(plan: Plan, origin_days: dict[str, int]) -> int:
