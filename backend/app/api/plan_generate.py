@@ -1,18 +1,11 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter
 
-from app.ai.core.models import GeneratePlanRequest, Plan, Scores
+from app.ai.core.models import GeneratePlanRequest, Plan
+from app.ai.csp.backtracking import generate_initial_plan
 
 router = APIRouter()
 
 
 @router.post("/plan/generate", response_model=Plan)
 async def generate_plan(req: GeneratePlanRequest) -> Plan:
-    return Plan(
-        id="stub-plan-001",
-        generated_at=datetime.now(UTC).isoformat(),
-        sessions=[],
-        scores=Scores(),
-        strategy_trace=[],
-    )
+    return generate_initial_plan(req)
