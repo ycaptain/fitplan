@@ -61,6 +61,18 @@ def test_count_hard_violations_includes_fixed_events() -> None:
     assert count_hard_violations(plan, [fixed_event]) == 1
 
 
+def test_count_hard_violations_flags_same_day_overload() -> None:
+    plan = _plan(
+        [
+            _session(0, "push", "07:00"),
+            _session(0, "pull", "17:00"),
+            _session(2, "legs", "18:00"),
+        ]
+    )
+
+    assert count_hard_violations(plan, []) == 1
+
+
 def test_recovery_penalises_close_same_type_sessions() -> None:
     close = _plan([_session(0, "push", "18:00"), _session(1, "push", "18:00")])
     spaced = _plan([_session(0, "push", "18:00"), _session(3, "push", "18:00")])
