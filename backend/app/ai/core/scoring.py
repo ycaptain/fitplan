@@ -38,9 +38,18 @@ def count_hard_violations(
     constraints: list[Constraint],
     session_types: dict[str, SessionType] | None = None,
 ) -> int:
-    return _count_conflicts(plan.sessions) + _count_fixed_event_overlaps(
-        plan.sessions, constraints
+    return (
+        _count_conflicts(plan.sessions)
+        + _count_same_day_overload(plan.sessions)
+        + _count_fixed_event_overlaps(plan.sessions, constraints)
     )
+
+
+def _count_same_day_overload(sessions: list[ScheduledSession]) -> int:
+    counts: dict[int, int] = {}
+    for s in sessions:
+        counts[s.day] = counts.get(s.day, 0) + 1
+    return sum(c - 1 for c in counts.values() if c > 1)
 
 
 def _count_conflicts(sessions: list[ScheduledSession]) -> int:
