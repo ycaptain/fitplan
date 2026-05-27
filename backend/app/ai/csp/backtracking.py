@@ -25,40 +25,61 @@ def generate_initial_plan(req: GeneratePlanRequest) -> Plan:
 
     day_order = _day_order(req.sessions_per_week)
 
+    type_map = {s.id: s for s in session_types}
+
     for i in range(req.sessions_per_week):
         session_type = session_types[i % len(session_types)]
-        placed = False
-
         rotated_days = day_order[i:] + day_order[:i]
+        duration = min(
+            session_type.duration_min,
+            req.preferences.max_session_duration_min,
+        )
 
+        placed = False
         for day in rotated_days:
+            if any(s.day == day for s in sessions):
+                continue
             for start in candidate_starts:
                 nodes += 1
-
-                candidate = ScheduledSession(
-                    id=ScheduledSession.derive_id(day, session_type.id, start),
-                    session_type_id=session_type.id,
-                    day=day,
-                    start=start,
-                    duration_min=min(
-                        session_type.duration_min,
-                        req.preferences.max_session_duration_min,
-                    ),
-                    locked=False,
-                )
-
+                candidate = _build_candidate(session_type, day, start, duration)
                 if _is_valid_candidate(
                     candidate=candidate,
                     existing=sessions,
                     fixed_events=req.fixed_events,
-                    session_types={s.id: s for s in session_types},
+                    session_types=type_map,
                 ):
                     sessions.append(candidate)
                     placed = True
                     break
-
             if placed:
                 break
+
+        if placed:
+            continue
+
+        best_candidate: ScheduledSession | None = None
+        best_key: tuple[int, int] | None = None
+        for day in rotated_days:
+            day_load = sum(1 for s in sessions if s.day == day)
+            for start in candidate_starts:
+                nodes += 1
+                candidate = _build_candidate(session_type, day, start, duration)
+                if not _is_valid_candidate(
+                    candidate=candidate,
+                    existing=sessions,
+                    fixed_events=req.fixed_events,
+                    session_types=type_map,
+                    relaxed=True,
+                ):
+                    continue
+                gap = _same_day_gap(candidate, sessions)
+                key = (-day_load, gap)
+                if best_key is None or key > best_key:
+                    best_candidate = candidate
+                    best_key = key
+
+        if best_candidate is not None:
+            sessions.append(best_candidate)
 
     plan = Plan(
         id=f"plan-{datetime.now(UTC).timestamp()}",
@@ -158,11 +179,28 @@ def _candidate_starts(preferred_time_of_day: str) -> list[str]:
     return ["07:00", "08:00", "12:00", "17:00", "18:00", "19:00"]
 
 
+def _build_candidate(
+    session_type: SessionType,
+    day: int,
+    start: str,
+    duration: int,
+) -> ScheduledSession:
+    return ScheduledSession(
+        id=ScheduledSession.derive_id(day, session_type.id, start),
+        session_type_id=session_type.id,
+        day=day,
+        start=start,
+        duration_min=duration,
+        locked=False,
+    )
+
+
 def _is_valid_candidate(
     candidate: ScheduledSession,
     existing: list[ScheduledSession],
     fixed_events: list[FixedEvent],
     session_types: dict[str, SessionType],
+    relaxed: bool = False,
 ) -> bool:
     if _overlaps_fixed_event(candidate, fixed_events):
         return False
@@ -170,10 +208,57 @@ def _is_valid_candidate(
     if _overlaps_existing_session(candidate, existing):
         return False
 
+    if relaxed:
+        return True
+
+    if any(s.day == candidate.day for s in existing):
+        return False
+
     if not _satisfies_recovery(candidate, existing, session_types):
         return False
 
     return True
+
+
+def _overlaps_existing_session(
+    candidate: ScheduledSession,
+    existing: list[ScheduledSession],
+) -> bool:
+    c_start = _minutes(candidate.start)
+    c_end = c_start + candidate.duration_min
+
+    for session in existing:
+        if session.day != candidate.day:
+            continue
+        s_start = _minutes(session.start)
+        s_end = s_start + session.duration_min
+        if c_start < s_end and s_start < c_end:
+            return True
+
+    return False
+
+
+def _same_day_gap(
+    candidate: ScheduledSession,
+    existing: list[ScheduledSession],
+) -> int:
+    same_day = [s for s in existing if s.day == candidate.day]
+    if not same_day:
+        return 24 * 60
+
+    c_start = _minutes(candidate.start)
+    c_end = c_start + candidate.duration_min
+    gaps: list[int] = []
+    for s in same_day:
+        s_start = _minutes(s.start)
+        s_end = s_start + s.duration_min
+        if c_start >= s_end:
+            gaps.append(c_start - s_end)
+        elif s_start >= c_end:
+            gaps.append(s_start - c_end)
+        else:
+            return -1
+    return min(gaps)
 
 
 def _overlaps_fixed_event(
@@ -191,26 +276,6 @@ def _overlaps_fixed_event(
         e_end = _minutes(event.end)
 
         if s_start < e_end and e_start < s_end:
-            return True
-
-    return False
-
-
-def _overlaps_existing_session(
-    candidate: ScheduledSession,
-    existing: list[ScheduledSession],
-) -> bool:
-    c_start = _minutes(candidate.start)
-    c_end = c_start + candidate.duration_min
-
-    for session in existing:
-        if session.day != candidate.day:
-            continue
-
-        s_start = _minutes(session.start)
-        s_end = s_start + session.duration_min
-
-        if c_start < s_end and s_start < c_end:
             return True
 
     return False
