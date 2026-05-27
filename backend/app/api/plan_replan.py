@@ -22,6 +22,7 @@ from app.ai.core.models import (
     ReplanResult,
     UserState,
 )
+from app.api import plan_store
 
 router = APIRouter()
 
@@ -35,37 +36,53 @@ _FIXTURES = (
 
 @router.post("/plan/replan", response_model=ReplanResult)
 async def replan(req: ReplanRequest) -> ReplanResult:
-    plan = _load_plan(req.plan_id)
-    delta, constraints = _build_delta(plan, req)
+    plan, events = _load_plan_and_events(req.plan_id)
+    delta, constraints, next_events = _build_delta(plan, req, events)
     orchestrate = registry.get(registry.AlgorithmKey.ORCHESTRATE_REPLAN)
-    return orchestrate(plan, delta, constraints, req.mode)
+    result: ReplanResult = orchestrate(plan, delta, constraints, req.mode)
+    plan_store.put(result.plan, next_events)
+    return result
 
 
-def _load_plan(plan_id: str) -> Plan:
+def _load_plan_and_events(plan_id: str) -> tuple[Plan, list[FixedEvent]]:
+    stored = plan_store.get(plan_id)
+    if stored is not None:
+        return stored.plan, list(stored.events)
+
     data = json.loads(_FIXTURES.read_text())
     for raw in data["plans"]:
         if raw["id"] == plan_id:
-            return Plan.model_validate(raw)
+            return Plan.model_validate(raw), []
+
     raise HTTPException(status_code=404, detail=f"plan '{plan_id}' not found")
 
 
 def _build_delta(
-    plan: Plan, req: ReplanRequest
-) -> tuple[PlanDelta, list[Constraint]]:
+    plan: Plan,
+    req: ReplanRequest,
+    existing_events: list[FixedEvent],
+) -> tuple[PlanDelta, list[Constraint], list[FixedEvent]]:
     if req.trigger_type == "fixed_event_added":
         event = FixedEvent.model_validate(req.payload)
+        all_events = [*existing_events, event]
         return (
             from_fixed_event_added(plan, event),
-            [_fixed_event_constraint(event)],
+            [_fixed_event_constraint(e) for e in all_events],
+            all_events,
         )
+
+    constraints = [_fixed_event_constraint(e) for e in existing_events]
+
     if req.trigger_type == "session_missed":
-        return from_session_missed(plan, req.payload["session_id"]), []
-    if req.trigger_type == "state_changed":
-        return from_state_changed(plan, UserState.model_validate(req.payload)), []
-    return (
-        from_manual_edit(plan, req.payload["session_id"], req.payload["new_start"]),
-        [],
-    )
+        delta = from_session_missed(plan, req.payload["session_id"])
+    elif req.trigger_type == "state_changed":
+        delta = from_state_changed(plan, UserState.model_validate(req.payload))
+    else:
+        delta = from_manual_edit(
+            plan, req.payload["session_id"], req.payload["new_start"]
+        )
+
+    return delta, constraints, list(existing_events)
 
 
 def _fixed_event_constraint(event: FixedEvent) -> Constraint:
