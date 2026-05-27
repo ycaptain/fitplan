@@ -33,15 +33,15 @@ def test_replan_returns_replan_result(client: TestClient) -> None:
     response = client.post(
         "/api/plan/replan",
         json={
-            "plan_id": "test-plan",
+            "plan_id": "ppl-base-001",
             "trigger_type": "session_missed",
-            "payload": {},
+            "payload": {"session_id": "0-push-18:00"},
             "mode": "minimal_disruption",
         },
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["plan"]["id"] == "test-plan"
+    assert body["plan"]["id"] == "ppl-base-001"
     assert "diff" in body
     assert "metrics" in body
 
