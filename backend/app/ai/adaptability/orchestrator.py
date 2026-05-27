@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from typing import Final
 
+from app.ai import local as _local  # noqa: F401
 from app.ai.core import registry
 from app.ai.core.explain import explain_replan
 from app.ai.core.models import (
