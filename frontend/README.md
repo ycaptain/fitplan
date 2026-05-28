@@ -22,16 +22,12 @@ app/
 ├─ layout.tsx              root layout
 ├─ page.tsx                landing
 ├─ onboarding/page.tsx     onboarding wizard
-├─ plan/page.tsx           main panel (calendar + score card)
+├─ plan/page.tsx           main panel (calendar + replan flow)
 ├─ history/page.tsx        plan history
 └─ settings/page.tsx       preferences
 
 components/
-├─ Calendar/               week grid
-├─ ScoreCard/              score visualization
-├─ ReplanDrawer/           replan controls + diff
-├─ DiffView/               old vs new plan diff
-└─ ExplainDrawer/          constraint hits + score breakdown
+└─ Calendar/               drag-to-create weekly grid
 
 lib/
 ├─ types.ts                mirrors backend Pydantic models
