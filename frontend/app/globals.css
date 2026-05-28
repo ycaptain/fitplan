@@ -2,19 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground: #0f172a;
-  --background: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground: #f8fafc;
-    --background: #0f172a;
-  }
-}
-
+/* Force light theme to keep text/background contrast consistent. */
+html,
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: #0f172a;
+  background: #f8fafc;
 }
