@@ -108,3 +108,55 @@ def test_seed_isolation_is_pure(seed: int) -> None:
     a = hill_climbing(plan, [], random_seed=seed)
     b = hill_climbing(plan, [], random_seed=seed)
     assert a.model_dump() == b.model_dump()
+
+
+def test_sessions_stay_within_training_window() -> None:
+    """Sessions must never be scheduled to finish after 22:00 (calendar UI bound)."""
+    sessions = [
+        ScheduledSession(
+            id=ScheduledSession.derive_id(day, "legs", "07:00"),
+            session_type_id="legs",
+            day=day,
+            start="07:00",
+            duration_min=70,
+        )
+        for day in range(3)
+    ]
+    plan = Plan(id="late-night", generated_at="1970-01-01T00:00:00Z", sessions=sessions)
+    constraints = [
+        _meeting(0, "07:00", "15:00"),
+        _meeting(2, "06:30", "15:00"),
+        _meeting(2, "16:00", "21:00"),
+        _meeting(2, "21:30", "23:00"),
+    ]
+
+    result = hill_climbing(plan, constraints, random_seed=5)
+
+    for s in result.sessions:
+        end_min = int(s.start.split(":")[0]) * 60 + int(s.start.split(":")[1]) + s.duration_min
+        assert end_min <= 22 * 60, f"session {s.id} ends past 22:00"
+
+
+def test_narrow_calendar_eliminates_hard_violations() -> None:
+    sessions = [
+        ScheduledSession(
+            id=ScheduledSession.derive_id(day, "upper" if day % 2 == 0 else "lower", "07:00"),
+            session_type_id="upper" if day % 2 == 0 else "lower",
+            day=day,
+            start="07:00",
+            duration_min=60,
+        )
+        for day in range(6)
+    ]
+    plan = Plan(id="narrow", generated_at="1970-01-01T00:00:00Z", sessions=sessions)
+    constraints = [
+        _meeting(0, "06:30", "13:00"),
+        _meeting(1, "08:30", "11:00"),
+        _meeting(2, "07:00", "09:30"),
+        _meeting(4, "09:30", "11:00"),
+    ]
+    assert count_hard_violations(plan, constraints) > 0
+
+    result = hill_climbing(plan, constraints, random_seed=3)
+
+    assert count_hard_violations(result, constraints) == 0
