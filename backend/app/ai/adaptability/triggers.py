@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from app.ai.core.models import FixedEvent, Plan, PlanDelta, UserState
 
 HIGH_FATIGUE_THRESHOLD: int = 7
@@ -7,20 +9,32 @@ LOW_SLEEP_HOURS: float = 5.0
 
 
 def from_fixed_event_added(plan: Plan, event: FixedEvent) -> PlanDelta:
-    event_start = _minutes(event.start)
-    event_end = _minutes(event.end)
-    affected = [
-        s.id
-        for s in plan.sessions
-        if s.day == event.day_of_week
-        and _minutes(s.start) < event_end
-        and event_start < _minutes(s.start) + s.duration_min
-    ]
+    affected = sessions_overlapping_events(plan, [event])
     return PlanDelta(
         trigger_type="fixed_event_added",
         payload=event.model_dump(),
         affected_session_ids=affected,
     )
+
+
+def sessions_overlapping_events(
+    plan: Plan, events: Iterable[FixedEvent]
+) -> list[str]:
+    """Return ids of sessions overlapping any of the provided fixed events."""
+    event_list = list(events)
+    if not event_list:
+        return []
+    affected: list[str] = []
+    for session in plan.sessions:
+        s_start = _minutes(session.start)
+        s_end = s_start + session.duration_min
+        for event in event_list:
+            if event.day_of_week != session.day:
+                continue
+            if s_start < _minutes(event.end) and _minutes(event.start) < s_end:
+                affected.append(session.id)
+                break
+    return affected
 
 
 def from_session_missed(plan: Plan, session_id: str) -> PlanDelta:

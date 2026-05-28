@@ -142,6 +142,10 @@ class ReplanRequest(BaseModel):
     ]
     payload: dict = Field(default_factory=dict)
     mode: ReplanMode = "minimal_disruption"
+    # Optional: client-authoritative full list of fixed events at the moment of
+    # the replan. When provided, the server treats this as the canonical event
+    # set instead of the value cached in plan_store.
+    fixed_events: list[FixedEvent] | None = None
 
 
 class ConstraintViolation(BaseModel):

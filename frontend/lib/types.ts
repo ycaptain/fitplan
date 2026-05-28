@@ -129,6 +129,7 @@ export interface ReplanRequest {
   trigger_type: TriggerType;
   payload: Record<string, unknown>;
   mode: ReplanMode;
+  fixed_events?: FixedEvent[];
 }
 
 export interface ConstraintViolation {
