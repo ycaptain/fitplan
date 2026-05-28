@@ -94,6 +94,9 @@ export default function PlanPage() {
           end: pendingEvent.end,
           label: pendingEvent.label,
         },
+        // Send the full local list so any blocks the user added without
+        // replanning (or removed locally) remain authoritative on the server.
+        fixed_events: events,
       });
       setPlan(result.plan);
       setDiff(result.diff);
