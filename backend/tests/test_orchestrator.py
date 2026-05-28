@@ -88,6 +88,37 @@ def test_infeasible_returns_origin_with_reason(
     assert roles == ["feasibility"]
 
 
+def test_residual_lock_does_not_freeze_newly_affected_session() -> None:
+    """A session locked by a previous replan must still be movable when the
+    next replan marks it as affected."""
+    plan = _load_plan("ppl-base-001")
+    # Simulate a stale lock left over from a prior round on a session that
+    # the new event will overlap.
+    target_id = plan.sessions[0].id
+    plan.sessions[0] = plan.sessions[0].model_copy(update={"locked": True})
+    target = plan.sessions[0]
+    blocking_event = FixedEvent(
+        id="evt-block",
+        day_of_week=target.day,
+        start=target.start,
+        end="22:00",
+        label="Day-long block",
+    )
+    delta = from_fixed_event_added(plan, blocking_event)
+    assert target_id in delta.affected_session_ids
+
+    result = orchestrate_replan(
+        plan,
+        delta,
+        [_meeting(blocking_event)],
+        "minimal_disruption",
+        random_seed=1,
+    )
+
+    relocated = next(s for s in result.plan.sessions if s.id == target_id)
+    assert (relocated.day, relocated.start) != (target.day, target.start)
+
+
 def test_minimal_disruption_locks_unaffected() -> None:
     plan = _load_plan("ppl-base-001")
     event = _thu_meeting()

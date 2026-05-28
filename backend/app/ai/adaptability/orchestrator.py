@@ -77,7 +77,7 @@ def _check_feasibility(plan: Plan, constraints: list[Constraint]) -> CSPResult:
 def _lock_non_affected(plan: Plan, affected: set[str]) -> Plan:
     clone = plan.model_copy(deep=True)
     clone.sessions = [
-        s if s.id in affected else s.model_copy(update={"locked": True})
+        s.model_copy(update={"locked": s.id not in affected})
         for s in clone.sessions
     ]
     return clone
