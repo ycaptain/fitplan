@@ -12,6 +12,7 @@ from app.ai.core.models import (
 )
 
 CONFLICT_PENALTY: Final[float] = 5.0
+OVERLOAD_PENALTY: Final[float] = 2.0
 RECOVERY_REWARD: Final[float] = 1.0
 RECOVERY_VIOLATION: Final[float] = -1.0
 
@@ -22,13 +23,15 @@ def score_plan(
     session_types: dict[str, SessionType] | None = None,
 ) -> Scores:
     conflicts = _count_conflicts(plan.sessions)
+    overload = _count_same_day_overload(plan.sessions)
     recovery = _recovery_score(plan.sessions, session_types)
-    total = recovery - CONFLICT_PENALTY * conflicts
+    balance = -OVERLOAD_PENALTY * overload
+    total = recovery - CONFLICT_PENALTY * conflicts + balance
     return Scores(
         recovery=recovery,
         consistency=0.0,
         conflicts=conflicts,
-        balance=0.0,
+        balance=balance,
         total=total,
     )
 
@@ -38,9 +41,10 @@ def count_hard_violations(
     constraints: list[Constraint],
     session_types: dict[str, SessionType] | None = None,
 ) -> int:
+    # Same-day overload is treated as a soft penalty via score_plan.balance so
+    # the planner can still produce a feasible schedule in narrow calendars.
     return (
         _count_conflicts(plan.sessions)
-        + _count_same_day_overload(plan.sessions)
         + _count_fixed_event_overlaps(plan.sessions, constraints)
     )
 
