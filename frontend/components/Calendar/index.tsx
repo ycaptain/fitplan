@@ -95,8 +95,8 @@ export default function Calendar({
   const sessionBlocks = useMemo(() => sessions.map(sessionToBlock), [sessions]);
 
   return (
-    <div className="flex select-none">
-      <div className="w-12 shrink-0 pr-2 pt-6 text-right text-[11px] text-slate-400">
+    <div className="flex select-none text-slate-900">
+      <div className="w-12 shrink-0 pr-2 pt-6 text-right text-xs text-slate-600">
         {HOURS.map((hour) => (
           <div key={hour} style={{ height: HOUR_PX }}>
             {formatHour(hour)}
@@ -105,7 +105,7 @@ export default function Calendar({
       </div>
 
       <div className="flex-1">
-        <div className="grid grid-cols-7 border-b border-slate-200 text-center text-xs font-medium text-slate-500">
+        <div className="grid grid-cols-7 border-b border-slate-400 text-center text-sm font-semibold text-slate-800">
           {DAY_LABELS.map((label) => (
             <div key={label} className="py-1">
               {label}
@@ -116,7 +116,7 @@ export default function Calendar({
         <div
           ref={gridRef}
           className={[
-            "relative grid grid-cols-7 border-l border-slate-200",
+            "relative grid grid-cols-7 border-l border-slate-300",
             interactive ? "cursor-crosshair" : "",
           ].join(" ")}
           style={{ height: totalHeight }}
@@ -128,12 +128,12 @@ export default function Calendar({
           {DAY_LABELS.map((label, day) => (
             <div
               key={label}
-              className="relative border-r border-slate-200"
+              className="relative border-r border-slate-300"
             >
               {HOURS.map((hour) => (
                 <div
                   key={hour}
-                  className="border-b border-slate-100"
+                  className="border-b border-slate-200"
                   style={{ height: HOUR_PX }}
                 />
               ))}
@@ -148,8 +148,8 @@ export default function Calendar({
                     tone="event"
                     onDismiss={onRemoveEvent ? () => onRemoveEvent(event.id) : undefined}
                   >
-                    <p className="truncate font-medium">{event.label}</p>
-                    <p className="truncate text-[11px] opacity-80">
+                    <p className="truncate font-semibold">{event.label}</p>
+                    <p className="truncate text-[11px]">
                       {event.start}-{event.end}
                     </p>
                   </Block>
@@ -168,10 +168,10 @@ export default function Calendar({
                         : "session"
                     }
                   >
-                    <p className="truncate font-medium capitalize">
+                    <p className="truncate font-semibold capitalize">
                       {block.label}
                     </p>
-                    <p className="truncate text-[11px] opacity-80">
+                    <p className="truncate text-[11px]">
                       {block.startLabel} · {block.durationLabel}
                     </p>
                   </Block>
@@ -179,7 +179,7 @@ export default function Calendar({
 
               {draft && draft.day === day ? (
                 <div
-                  className="pointer-events-none absolute inset-x-1 rounded-md border border-dashed border-slate-500 bg-slate-200/60"
+                  className="pointer-events-none absolute inset-x-1 rounded border-2 border-dashed border-slate-600 bg-slate-300/60"
                   style={{
                     top: minutesOffset(draft.startMin),
                     height: blockHeight(draft.startMin, draft.endMin),
@@ -209,22 +209,22 @@ function Block({
 }) {
   const colors =
     tone === "event"
-      ? "bg-rose-100 border-rose-300 text-rose-900"
+      ? "bg-rose-200 border-rose-500 text-rose-950"
       : tone === "session-moved"
-        ? "bg-amber-100 border-amber-400 text-amber-900"
-        : "bg-emerald-100 border-emerald-300 text-emerald-900";
+        ? "bg-amber-200 border-amber-600 text-amber-950"
+        : "bg-emerald-200 border-emerald-600 text-emerald-950";
 
   return (
     <div
       data-event-block={tone}
-      className={`absolute inset-x-1 rounded-md border px-2 py-1 text-xs shadow-sm ${colors}`}
+      className={`absolute inset-x-1 rounded border px-2 py-1 text-xs ${colors}`}
       style={{ top, height }}
     >
       {onDismiss ? (
         <button
           type="button"
           onClick={onDismiss}
-          className="absolute right-1 top-1 rounded-full bg-white/70 px-1 text-[10px] text-rose-700 hover:bg-white"
+          className="absolute right-1 top-1 rounded bg-white/80 px-1 text-[10px] font-bold text-rose-800 hover:bg-white"
         >
           ×
         </button>

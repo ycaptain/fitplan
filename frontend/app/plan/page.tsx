@@ -114,20 +114,16 @@ export default function PlanPage() {
     : [];
 
   return (
-    <main className="mx-auto max-w-7xl space-y-4 p-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-950">
-            Drag to block time, then generate a plan
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Step 1: drag your meetings and classes, click Generate (CSP). Step 2:
-            after the plan exists, drag a new block onto an existing workout to
-            trigger Replan (Hill Climbing).
-          </p>
-        </div>
-        <Stats plan={plan} lastStep={lastStep} diff={diff} />
+    <main className="mx-auto max-w-6xl space-y-4 p-6 text-slate-900">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold">Weekly workout plan</h1>
+        <p className="text-sm text-slate-700">
+          1) Drag on the calendar to mark busy time. 2) Pick a split and click
+          Generate. 3) Add a new block that overlaps a workout to trigger replan.
+        </p>
       </header>
+
+      <Stats plan={plan} lastStep={lastStep} diff={diff} />
 
       {pendingEvent ? (
         <ConflictBanner
@@ -139,7 +135,7 @@ export default function PlanPage() {
         />
       ) : null}
 
-      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-[1fr_280px]">
+      <section className="grid gap-4 rounded-lg border border-slate-300 bg-white p-4 lg:grid-cols-[1fr_260px]">
         <Calendar
           sessions={plan?.sessions ?? []}
           events={events}
@@ -148,12 +144,12 @@ export default function PlanPage() {
           onRemoveEvent={removeEvent}
         />
 
-        <aside className="space-y-4">
+        <aside className="space-y-3">
           <Field label="Split">
             <select
               value={split}
               onChange={(e) => setSplit(e.target.value as SplitName)}
-              className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded border border-slate-400 bg-white px-2 py-1.5 text-sm text-slate-900"
             >
               {SPLITS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -163,14 +159,14 @@ export default function PlanPage() {
             </select>
           </Field>
 
-          <Field label="Sessions / week">
+          <Field label="Sessions per week">
             <input
               type="number"
               min={2}
               max={6}
               value={sessionsPerWeek}
               onChange={(e) => setSessionsPerWeek(Number(e.target.value))}
-              className="w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="w-full rounded border border-slate-400 bg-white px-2 py-1.5 text-sm text-slate-900"
             />
           </Field>
 
@@ -178,29 +174,24 @@ export default function PlanPage() {
             type="button"
             onClick={runGenerate}
             disabled={loading}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="w-full rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             {loading ? "Working…" : "Generate plan"}
           </button>
 
           {error ? (
-            <p className="rounded-md bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
+            <p className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+              {error}
+            </p>
           ) : null}
 
           {events.length > 0 ? (
             <EventList events={events} onRemove={removeEvent} />
           ) : (
-            <p className="text-xs text-slate-400">
-              Drag on the calendar to add a busy block.
+            <p className="text-xs text-slate-600">
+              Tip: drag on the calendar to mark a busy block.
             </p>
           )}
-
-          {plan ? (
-            <p className="text-[11px] leading-relaxed text-slate-400">
-              Need replan? Drop a block on a green workout (e.g. a new meeting on the
-              same day) and the Replan banner will appear.
-            </p>
-          ) : null}
         </aside>
       </section>
     </main>
@@ -218,19 +209,17 @@ function Stats({
 }) {
   if (!plan) {
     return (
-      <p className="text-xs text-slate-400">
-        No plan yet · drag a block, click Generate
+      <p className="text-sm text-slate-600">
+        No plan yet. Mark busy time, then click Generate.
       </p>
     );
   }
 
-  const role = lastStep?.role;
   const movedCount = diff ? diff.moved.length + diff.added.length + diff.removed.length : 0;
 
   return (
-    <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+    <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800">
       <Stat label="Algorithm" value={formatAlgorithm(lastStep?.algorithm)} />
-      <Stat label="Step" value={role ?? "-"} />
       <Stat label="Time" value={formatTime(lastStep?.time_ms)} />
       <Stat label="Sessions" value={String(plan.sessions.length)} />
       <Stat label="Score" value={String(plan.scores.total)} />
@@ -254,16 +243,16 @@ function ConflictBanner({
 }) {
   const target = overlappedIds[0] ?? "an existing session";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
-      <div className="text-sm text-amber-900">
-        New block on {DAY_LABELS[event.day_of_week]} {event.start}-{event.end} conflicts with{" "}
-        <span className="font-medium">{target}</span>.
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-amber-400 bg-amber-100 px-4 py-3">
+      <div className="text-sm text-amber-950">
+        New block on {DAY_LABELS[event.day_of_week]} {event.start}-{event.end} conflicts
+        with <span className="font-semibold">{target}</span>.
       </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-md border border-amber-300 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-100"
+          className="rounded border border-amber-500 bg-white px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-50"
         >
           Skip
         </button>
@@ -271,9 +260,9 @@ function ConflictBanner({
           type="button"
           onClick={onReplan}
           disabled={loading}
-          className="rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-amber-300"
+          className="rounded bg-amber-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-amber-400"
         >
-          {loading ? "Replanning…" : "Replan with Hill Climbing"}
+          {loading ? "Replanning…" : "Replan"}
         </button>
       </div>
     </div>
@@ -282,18 +271,18 @@ function ConflictBanner({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="text-sm font-semibold text-slate-900">{value}</dd>
+    <div className="flex items-baseline gap-2">
+      <dt className="text-slate-600">{label}:</dt>
+      <dd className="font-semibold text-slate-900">{value}</dd>
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
-      <span className="text-[11px] uppercase tracking-wide text-slate-500">{label}</span>
-      <div className="mt-1">{children}</div>
+    <label className="block space-y-1 text-sm text-slate-800">
+      <span>{label}</span>
+      {children}
     </label>
   );
 }
@@ -307,10 +296,11 @@ function EventList({
 }) {
   return (
     <ul className="space-y-1 text-xs">
+      <li className="text-slate-700">Busy blocks:</li>
       {events.map((event) => (
         <li
           key={event.id}
-          className="flex items-center justify-between gap-2 rounded-md bg-rose-50 px-2 py-1.5 text-rose-900"
+          className="flex items-center justify-between gap-2 rounded border border-rose-300 bg-rose-50 px-2 py-1.5 text-rose-900"
         >
           <span>
             {DAY_LABELS[event.day_of_week]} {event.start}-{event.end}
@@ -318,7 +308,7 @@ function EventList({
           <button
             type="button"
             onClick={() => onRemove(event.id)}
-            className="text-rose-600 hover:text-rose-900"
+            className="text-rose-700 underline hover:text-rose-900"
           >
             remove
           </button>
