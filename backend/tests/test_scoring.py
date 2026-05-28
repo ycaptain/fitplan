@@ -4,6 +4,7 @@ from app.ai.core.constraints import ConstraintType
 from app.ai.core.models import Constraint, Plan, ScheduledSession
 from app.ai.core.scoring import (
     CONFLICT_PENALTY,
+    OVERLOAD_PENALTY,
     count_hard_violations,
     score_plan,
 )
@@ -61,7 +62,7 @@ def test_count_hard_violations_includes_fixed_events() -> None:
     assert count_hard_violations(plan, [fixed_event]) == 1
 
 
-def test_count_hard_violations_flags_same_day_overload() -> None:
+def test_same_day_overload_is_soft_penalty() -> None:
     plan = _plan(
         [
             _session(0, "push", "07:00"),
@@ -70,7 +71,36 @@ def test_count_hard_violations_flags_same_day_overload() -> None:
         ]
     )
 
-    assert count_hard_violations(plan, []) == 1
+    assert count_hard_violations(plan, []) == 0
+    scores = score_plan(plan, [])
+    assert scores.balance == -OVERLOAD_PENALTY
+    assert scores.conflicts == 0
+
+
+def test_fixed_event_overlap_outweighs_same_day_overload() -> None:
+    overload = _plan(
+        [
+            _session(0, "push", "07:00"),
+            _session(0, "pull", "17:00"),
+        ]
+    )
+    event_conflict = _plan(
+        [
+            _session(0, "push", "07:00"),
+            _session(2, "pull", "18:00"),
+        ]
+    )
+    fixed_event = Constraint(
+        id="cls-stats",
+        kind="hard",
+        type=ConstraintType.FIXED_EVENT,
+        params={"day_of_week": 2, "start": "18:00", "end": "19:00"},
+    )
+
+    overload_hard = count_hard_violations(overload, [fixed_event])
+    conflict_hard = count_hard_violations(event_conflict, [fixed_event])
+
+    assert overload_hard < conflict_hard
 
 
 def test_recovery_penalises_close_same_type_sessions() -> None:
