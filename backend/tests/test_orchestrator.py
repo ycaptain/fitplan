@@ -92,8 +92,6 @@ def test_residual_lock_does_not_freeze_newly_affected_session() -> None:
     """A session locked by a previous replan must still be movable when the
     next replan marks it as affected."""
     plan = _load_plan("ppl-base-001")
-    # Simulate a stale lock left over from a prior round on a session that
-    # the new event will overlap.
     target_id = plan.sessions[0].id
     plan.sessions[0] = plan.sessions[0].model_copy(update={"locked": True})
     target = plan.sessions[0]
