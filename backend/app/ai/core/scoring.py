@@ -41,8 +41,6 @@ def count_hard_violations(
     constraints: list[Constraint],
     session_types: dict[str, SessionType] | None = None,
 ) -> int:
-    # Same-day overload is treated as a soft penalty via score_plan.balance so
-    # the planner can still produce a feasible schedule in narrow calendars.
     return (
         _count_conflicts(plan.sessions)
         + _count_fixed_event_overlaps(plan.sessions, constraints)

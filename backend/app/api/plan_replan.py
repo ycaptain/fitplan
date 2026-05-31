@@ -65,8 +65,6 @@ def _build_delta(
     if req.trigger_type == "fixed_event_added":
         new_event = FixedEvent.model_validate(req.payload)
         all_events = _reconcile_events(req.fixed_events, existing_events, new_event)
-        # Mark every session overlapping ANY event (new or pre-existing) as
-        # affected so the replanner can move all conflicting sessions at once.
         affected = sessions_overlapping_events(plan, all_events)
         delta = PlanDelta(
             trigger_type="fixed_event_added",
@@ -101,11 +99,8 @@ def _reconcile_events(
     server_events: list[FixedEvent],
     new_event: FixedEvent,
 ) -> list[FixedEvent]:
-    """Merge client-provided events with the new event, defaulting to the
-    server-cached list when the client did not send one."""
     if client_events is None:
         return [*server_events, new_event]
-    # Client is authoritative; ensure the new event is present (idempotent).
     by_id: dict[str, FixedEvent] = {e.id: e for e in client_events}
     by_id[new_event.id] = new_event
     return list(by_id.values())
