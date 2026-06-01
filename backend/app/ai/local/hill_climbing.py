@@ -4,27 +4,16 @@ import random
 from typing import Final
 
 from app.ai.core import registry
-from app.ai.core.constraints import ConstraintType
 from app.ai.core.models import (
     Constraint,
     Plan,
-    ScheduledSession,
     SessionType,
 )
 from app.ai.core.scoring import count_hard_violations, score_plan
+from app.ai.local.neighbourhood import candidate_starts, neighbours
 
-DAYS_IN_WEEK: Final[int] = 7
 SIDEWAYS_LIMIT: Final[int] = 10
 NO_IMPROVE_PATIENCE: Final[int] = 3
-EARLIEST_START_MINUTES: Final[int] = 6 * 60   # 06:00
-LATEST_END_MINUTES: Final[int] = 22 * 60      # 22:00, aligned with Calendar UI
-FALLBACK_STARTS: Final[tuple[str, ...]] = (
-    "07:00",
-    "12:00",
-    "17:00",
-    "18:00",
-    "19:00",
-)
 
 
 @registry.register(registry.AlgorithmKey.HILL_CLIMBING)
@@ -40,7 +29,7 @@ def hill_climbing(
     origin_days = {s.id: s.day for s in plan.sessions}
     rng = random.Random(random_seed)
     current = plan.model_copy(deep=True)
-    candidate_starts = _candidate_starts(current, constraints)
+    starts = candidate_starts(current, constraints)
 
     best_score = _fitness(current, constraints, origin_days, disturbance_penalty, session_types)
     no_improve = 0
@@ -50,7 +39,7 @@ def hill_climbing(
         best_neighbour: Plan | None = None
         best_neighbour_score: tuple[int, float, int] | None = None
 
-        candidates = list(_neighbours(current, candidate_starts))
+        candidates = list(neighbours(current, starts))
         rng.shuffle(candidates)
 
         for candidate in candidates:
@@ -104,45 +93,3 @@ def _moves_from_origin(plan: Plan, origin_days: dict[str, int]) -> int:
         for s in plan.sessions
         if s.id in origin_days and origin_days[s.id] != s.day
     )
-
-
-def _neighbours(plan: Plan, candidate_starts: list[str]):
-    for idx, session in enumerate(plan.sessions):
-        if session.locked:
-            continue
-        for day in range(DAYS_IN_WEEK):
-            for start in candidate_starts:
-                if day == session.day and start == session.start:
-                    continue
-                if _minutes(start) + session.duration_min > LATEST_END_MINUTES:
-                    continue
-                yield _move_session(plan, idx, day, start)
-
-
-def _move_session(plan: Plan, idx: int, new_day: int, new_start: str) -> Plan:
-    neighbour = plan.model_copy(deep=True)
-    original: ScheduledSession = neighbour.sessions[idx]
-    neighbour.sessions[idx] = original.model_copy(
-        update={"day": new_day, "start": new_start}
-    )
-    return neighbour
-
-
-def _candidate_starts(plan: Plan, constraints: list[Constraint]) -> list[str]:
-    starts: set[str] = {s.start for s in plan.sessions}
-    for c in constraints:
-        if c.type != ConstraintType.FIXED_EVENT:
-            continue
-        end = c.params.get("end")
-        if isinstance(end, str):
-            starts.add(end)
-    starts.update(FALLBACK_STARTS)
-    return sorted(
-        (s for s in starts if _minutes(s) >= EARLIEST_START_MINUTES),
-        key=_minutes,
-    )
-
-
-def _minutes(hhmm: str) -> int:
-    hours, minutes = hhmm.split(":")
-    return int(hours) * 60 + int(minutes)
