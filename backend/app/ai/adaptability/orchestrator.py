@@ -18,6 +18,7 @@ from app.ai.core.models import (
     SessionType,
     StrategyStep,
 )
+from app.ai.csp.feasibility import check_feasibility
 
 INFEASIBLE_REASON: Final[str] = "infeasible: manual edit required"
 
@@ -33,18 +34,18 @@ def orchestrate_replan(
     random_seed: int | None = None,
 ) -> ReplanResult:
     feasibility_step = StrategyStep(
-        algorithm="csp_stub",
+        algorithm="csp_bt_fc",
         role="feasibility",
         score_after=plan.scores.total,
     )
 
-    if not _check_feasibility(plan, constraints).is_feasible:
+    affected = set(delta.affected_session_ids)
+    locked = _lock_non_affected(plan, affected)
+
+    if not _check_feasibility(locked, constraints, session_types=session_types).is_feasible:
         snapshot = plan.model_copy(deep=True)
         snapshot.strategy_trace = [*snapshot.strategy_trace, feasibility_step]
         return ReplanResult(plan=snapshot, reason=INFEASIBLE_REASON)
-
-    affected = set(delta.affected_session_ids)
-    locked = _lock_non_affected(plan, affected)
 
     hc = registry.get(registry.AlgorithmKey.HILL_CLIMBING)
     t0 = time.perf_counter()
@@ -70,8 +71,13 @@ def orchestrate_replan(
     return result
 
 
-def _check_feasibility(plan: Plan, constraints: list[Constraint]) -> CSPResult:
-    return CSPResult(is_feasible=True)
+def _check_feasibility(
+    plan: Plan,
+    constraints: list[Constraint],
+    *,
+    session_types: dict[str, SessionType] | None = None,
+) -> CSPResult:
+    return check_feasibility(plan, constraints, session_types=session_types)
 
 
 def _lock_non_affected(plan: Plan, affected: set[str]) -> Plan:

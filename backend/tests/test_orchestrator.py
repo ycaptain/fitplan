@@ -134,3 +134,34 @@ def test_minimal_disruption_locks_unaffected() -> None:
     for s in result.plan.sessions:
         if s.id in untouched:
             assert (s.day, s.start) == untouched[s.id]
+
+
+def test_week_fully_blocked_is_infeasible_without_stub() -> None:
+    """End-to-end infeasibility: every day is blocked, so the affected session
+    has no open slot and the orchestrator must return the original plan."""
+    plan = _load_plan("ppl-base-001")
+    target = plan.sessions[0]
+    blocking = FixedEvent(
+        id="evt-blocking",
+        day_of_week=target.day,
+        start=target.start,
+        end="22:00",
+        label="Blocking event",
+    )
+    constraints = [
+        Constraint(
+            id=f"all-day-{day}",
+            kind="hard",
+            type=ConstraintType.FIXED_EVENT,
+            params={"day_of_week": day, "start": "06:00", "end": "22:00"},
+        )
+        for day in range(7)
+    ]
+    delta = from_fixed_event_added(plan, blocking)
+    origin = [s.model_dump() for s in plan.sessions]
+
+    result = orchestrate_replan(plan, delta, constraints, "minimal_disruption")
+
+    assert result.reason == INFEASIBLE_REASON
+    assert [s.model_dump() for s in result.plan.sessions] == origin
+    assert result.plan.strategy_trace[-1].algorithm == "csp_bt_fc"
