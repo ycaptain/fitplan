@@ -340,7 +340,8 @@ function formatAlgorithm(algorithm?: string) {
   if (!algorithm) return "csp";
   if (algorithm.startsWith("csp_backtracking")) return "CSP backtracking + FC";
   if (algorithm === "hill_climbing") return "Hill Climbing";
-  if (algorithm === "csp_stub") return "CSP re-validation";
+  if (algorithm === "simulated_annealing") return "Simulated Annealing";
+  if (algorithm === "csp_bt_fc") return "CSP re-validation";
   return algorithm.replace(/_/g, " ");
 }
 
