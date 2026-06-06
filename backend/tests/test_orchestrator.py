@@ -165,3 +165,51 @@ def test_week_fully_blocked_is_infeasible_without_stub() -> None:
     assert result.reason == INFEASIBLE_REASON
     assert [s.model_dump() for s in result.plan.sessions] == origin
     assert result.plan.strategy_trace[-1].algorithm == "csp_bt_fc"
+
+
+def test_re_optimize_with_high_affected_ratio_routes_to_sa() -> None:
+    plan = _load_plan("ppl-base-001")
+    target = plan.sessions[0]
+    wide_event = FixedEvent(
+        id="evt-wide",
+        day_of_week=target.day,
+        start="06:00",
+        end="22:00",
+        label="All-day block",
+    )
+    delta = from_fixed_event_added(plan, wide_event)
+    delta.affected_session_ids = [s.id for s in plan.sessions[:3]]
+    assert len(delta.affected_session_ids) / len(plan.sessions) > 0.3
+
+    result = orchestrate_replan(
+        plan, delta, [_meeting(wide_event)], "re_optimize", random_seed=42
+    )
+
+    assert result.plan.strategy_trace[-1].algorithm == "simulated_annealing"
+
+
+def test_re_optimize_with_low_affected_ratio_stays_on_hc() -> None:
+    plan = _load_plan("ppl-base-001")
+    event = _thu_meeting()
+    delta = from_fixed_event_added(plan, event)
+    delta.affected_session_ids = delta.affected_session_ids[:1]
+    assert len(delta.affected_session_ids) / len(plan.sessions) <= 0.3
+
+    result = orchestrate_replan(
+        plan, delta, [_meeting(event)], "re_optimize", random_seed=42
+    )
+
+    assert result.plan.strategy_trace[-1].algorithm == "hill_climbing"
+
+
+def test_minimal_disruption_always_uses_hc() -> None:
+    plan = _load_plan("ppl-base-001")
+    event = _thu_meeting()
+    delta = from_fixed_event_added(plan, event)
+    delta.affected_session_ids = [s.id for s in plan.sessions]
+
+    result = orchestrate_replan(
+        plan, delta, [_meeting(event)], "minimal_disruption", random_seed=42
+    )
+
+    assert result.plan.strategy_trace[-1].algorithm == "hill_climbing"
