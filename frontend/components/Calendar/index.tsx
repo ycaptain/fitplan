@@ -23,7 +23,10 @@ const END_HOUR = 22;
 const HOUR_PX = 36;
 const SNAP_MIN = 30;
 
-const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+const HOURS = Array.from(
+  { length: END_HOUR - START_HOUR + 1 },
+  (_, i) => START_HOUR + i,
+);
 
 export default function Calendar({
   sessions = [],
@@ -32,9 +35,18 @@ export default function Calendar({
   onCreateEvent,
   onRemoveEvent,
 }: CalendarProps) {
-  const moved = useMemo(() => new Set(highlightChanges?.moved ?? []), [highlightChanges]);
-  const added = useMemo(() => new Set(highlightChanges?.added ?? []), [highlightChanges]);
-  const removed = useMemo(() => new Set(highlightChanges?.removed ?? []), [highlightChanges]);
+  const moved = useMemo(
+    () => new Set(highlightChanges?.moved ?? []),
+    [highlightChanges],
+  );
+  const added = useMemo(
+    () => new Set(highlightChanges?.added ?? []),
+    [highlightChanges],
+  );
+  const removed = useMemo(
+    () => new Set(highlightChanges?.removed ?? []),
+    [highlightChanges],
+  );
   const interactive = Boolean(onCreateEvent);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
@@ -51,7 +63,10 @@ export default function Calendar({
 
     const day = Math.min(6, Math.max(0, Math.floor((x / rect.width) * 7)));
     const totalMinutes = (END_HOUR - START_HOUR + 1) * 60;
-    const minutesFromStart = Math.max(0, Math.min(totalMinutes - SNAP_MIN, (y / rect.height) * totalMinutes));
+    const minutesFromStart = Math.max(
+      0,
+      Math.min(totalMinutes - SNAP_MIN, (y / rect.height) * totalMinutes),
+    );
     const snapped = Math.round(minutesFromStart / SNAP_MIN) * SNAP_MIN;
     return { day, minutes: START_HOUR * 60 + snapped };
   }, []);
@@ -65,7 +80,11 @@ export default function Calendar({
 
     event.currentTarget.setPointerCapture(event.pointerId);
     dragOriginMin.current = point.minutes;
-    setDraft({ day: point.day, startMin: point.minutes, endMin: point.minutes + SNAP_MIN });
+    setDraft({
+      day: point.day,
+      startMin: point.minutes,
+      endMin: point.minutes + SNAP_MIN,
+    });
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -76,7 +95,11 @@ export default function Calendar({
 
     const origin = dragOriginMin.current;
     const endMin = Math.max(point.minutes + SNAP_MIN, origin + SNAP_MIN);
-    setDraft({ day: draft.day, startMin: Math.min(origin, point.minutes), endMin });
+    setDraft({
+      day: draft.day,
+      startMin: Math.min(origin, point.minutes),
+      endMin,
+    });
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -93,6 +116,13 @@ export default function Calendar({
 
   const totalHeight = (END_HOUR - START_HOUR + 1) * HOUR_PX;
   const sessionBlocks = useMemo(() => sessions.map(sessionToBlock), [sessions]);
+  const sessionsPerDay = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const session of sessions) {
+      counts.set(session.day, (counts.get(session.day) ?? 0) + 1);
+    }
+    return counts;
+  }, [sessions]);
 
   return (
     <div className="flex select-none text-slate-900">
@@ -106,11 +136,25 @@ export default function Calendar({
 
       <div className="flex-1">
         <div className="grid grid-cols-7 border-b border-slate-400 text-center text-sm font-semibold text-slate-800">
-          {DAY_LABELS.map((label) => (
-            <div key={label} className="py-1">
-              {label}
-            </div>
-          ))}
+          {DAY_LABELS.map((label, day) => {
+            const count = sessionsPerDay.get(day) ?? 0;
+            return (
+              <div
+                key={label}
+                className="flex items-center justify-center gap-1 py-1"
+              >
+                {label}
+                {count > 1 ? (
+                  <span
+                    className="rounded bg-amber-200 px-1 text-[10px] font-bold text-amber-900"
+                    title={`${count} sessions on one day — soft overload penalty applies`}
+                  >
+                    ×{count}
+                  </span>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
 
         <div
@@ -126,10 +170,7 @@ export default function Calendar({
           onPointerCancel={handlePointerUp}
         >
           {DAY_LABELS.map((label, day) => (
-            <div
-              key={label}
-              className="relative border-r border-slate-300"
-            >
+            <div key={label} className="relative border-r border-slate-300">
               {HOURS.map((hour) => (
                 <div
                   key={hour}
@@ -144,9 +185,14 @@ export default function Calendar({
                   <Block
                     key={event.id}
                     top={minutesOffset(toMinutes(event.start))}
-                    height={blockHeight(toMinutes(event.start), toMinutes(event.end))}
+                    height={blockHeight(
+                      toMinutes(event.start),
+                      toMinutes(event.end),
+                    )}
                     tone="event"
-                    onDismiss={onRemoveEvent ? () => onRemoveEvent(event.id) : undefined}
+                    onDismiss={
+                      onRemoveEvent ? () => onRemoveEvent(event.id) : undefined
+                    }
                   >
                     <p className="truncate font-semibold">{event.label}</p>
                     <p className="truncate text-[11px]">
@@ -163,7 +209,9 @@ export default function Calendar({
                     top={block.top}
                     height={block.height}
                     tone={
-                      moved.has(block.id) || added.has(block.id) || removed.has(block.id)
+                      moved.has(block.id) ||
+                      added.has(block.id) ||
+                      removed.has(block.id)
                         ? "session-moved"
                         : "session"
                     }
