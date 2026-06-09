@@ -65,18 +65,30 @@ def explain_plan(plan: Plan, constraints: list[Constraint]) -> PlanExplanation:
 
 
 def explain_replan(
-    result: ReplanResult, constraints: list[Constraint]
+    result: ReplanResult,
+    constraints: list[Constraint],
+    affected_count: int | None = None,
 ) -> PlanExplanation:
     trace = result.plan.strategy_trace
     trigger = trace[-1].algorithm if trace else "replan"
+    disturbance_bound = (
+        affected_count if affected_count is not None else len(result.plan.sessions)
+    )
+    contained = result.metrics.disturbance <= disturbance_bound
 
     return PlanExplanation(
         constraint_hits=[
             {
                 "constraint_id": "replan_disturbance",
-                "satisfied": result.metrics.disturbance >= 0,
+                "satisfied": contained,
                 "explanation": (
-                    f"{result.metrics.disturbance} session(s) changed during replanning."
+                    f"{result.metrics.disturbance} session(s) changed during replanning"
+                    f" (affected set: {disturbance_bound})."
+                    if contained
+                    else (
+                        f"{result.metrics.disturbance} session(s) changed, exceeding the"
+                        f" {disturbance_bound} directly affected — wider reshuffle."
+                    )
                 ),
             },
             {
