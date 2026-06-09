@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import Calendar, { selectionToEvent, type SelectionDraft } from "@/components/Calendar";
+import { useEffect, useState } from "react";
+import Calendar, {
+  selectionToEvent,
+  type SelectionDraft,
+} from "@/components/Calendar";
 import { generatePlan, replan } from "@/lib/api";
+import { loadPrefs } from "@/lib/onboarding";
 import type {
   FixedEvent,
   GeneratePlanRequest,
+  Goal,
   Plan,
   ReplanDiff,
   ScheduledSession,
@@ -25,11 +30,24 @@ export default function PlanPage() {
   const [events, setEvents] = useState<FixedEvent[]>([]);
   const [split, setSplit] = useState<SplitName>("ppl");
   const [sessionsPerWeek, setSessionsPerWeek] = useState(4);
+  const [goal, setGoal] = useState<Goal>("general");
+  const [preferredTime, setPreferredTime] = useState<
+    "morning" | "evening" | "any"
+  >("any");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [diff, setDiff] = useState<ReplanDiff | null>(null);
   const [pendingEvent, setPendingEvent] = useState<FixedEvent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const prefs = loadPrefs();
+    if (!prefs) return;
+    setGoal(prefs.goal);
+    setSplit(prefs.split);
+    setSessionsPerWeek(prefs.sessions_per_week);
+    setPreferredTime(prefs.preferred_time_of_day);
+  }, []);
 
   function addEvent(draft: SelectionDraft) {
     const id = `evt-${Date.now()}`;
@@ -52,12 +70,12 @@ export default function PlanPage() {
 
   async function runGenerate() {
     const request: GeneratePlanRequest = {
-      goal: "general",
+      goal,
       split,
       sessions_per_week: sessionsPerWeek,
       fixed_events: events,
       preferences: {
-        preferred_time_of_day: "any",
+        preferred_time_of_day: preferredTime,
         max_session_duration_min: 90,
       },
     };
@@ -110,7 +128,9 @@ export default function PlanPage() {
 
   const lastStep = plan?.strategy_trace.at(-1);
   const overlappedIds = pendingEvent
-    ? plan?.sessions.filter((s) => sessionOverlapsEvent(s, pendingEvent)).map((s) => s.id) ?? []
+    ? (plan?.sessions
+        .filter((s) => sessionOverlapsEvent(s, pendingEvent))
+        .map((s) => s.id) ?? [])
     : [];
 
   return (
@@ -119,7 +139,8 @@ export default function PlanPage() {
         <h1 className="text-2xl font-bold">Weekly workout plan</h1>
         <p className="text-sm text-slate-700">
           1) Drag on the calendar to mark busy time. 2) Pick a split and click
-          Generate. 3) Add a new block that overlaps a workout to trigger replan.
+          Generate. 3) Add a new block that overlaps a workout to trigger
+          replan.
         </p>
       </header>
 
@@ -170,6 +191,15 @@ export default function PlanPage() {
             />
           </Field>
 
+          <p className="text-xs text-slate-600">
+            Goal: <span className="font-semibold capitalize">{goal}</span> ·
+            Time:{" "}
+            <span className="font-semibold capitalize">{preferredTime}</span>{" "}
+            <a href="/onboarding" className="underline">
+              edit
+            </a>
+          </p>
+
           <button
             type="button"
             onClick={runGenerate}
@@ -215,7 +245,9 @@ function Stats({
     );
   }
 
-  const movedCount = diff ? diff.moved.length + diff.added.length + diff.removed.length : 0;
+  const movedCount = diff
+    ? diff.moved.length + diff.added.length + diff.removed.length
+    : 0;
 
   return (
     <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-800">
@@ -245,8 +277,8 @@ function ConflictBanner({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-amber-400 bg-amber-100 px-4 py-3">
       <div className="text-sm text-amber-950">
-        New block on {DAY_LABELS[event.day_of_week]} {event.start}-{event.end} conflicts
-        with <span className="font-semibold">{target}</span>.
+        New block on {DAY_LABELS[event.day_of_week]} {event.start}-{event.end}{" "}
+        conflicts with <span className="font-semibold">{target}</span>.
       </div>
       <div className="flex gap-2">
         <button
@@ -278,7 +310,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block space-y-1 text-sm text-slate-800">
       <span>{label}</span>
