@@ -76,12 +76,25 @@ export interface StrategyStep {
   score_after: number;
 }
 
+export interface ConstraintHit {
+  constraint_id: string;
+  satisfied: boolean;
+  explanation: string;
+}
+
+export interface PlanExplanation {
+  constraint_hits: ConstraintHit[];
+  score_breakdown: Record<string, number>;
+  text_summary: string;
+}
+
 export interface Plan {
   id: string;
   generated_at: string;
   sessions: ScheduledSession[];
   scores: Scores;
   strategy_trace: StrategyStep[];
+  explanation?: PlanExplanation | null;
 }
 
 export interface PlanDelta {
@@ -107,6 +120,7 @@ export interface ReplanResult {
   diff: ReplanDiff;
   metrics: ReplanMetrics;
   reason: string;
+  explanation?: PlanExplanation | null;
 }
 
 export type ReplanMode = "minimal_disruption" | "re_optimize";

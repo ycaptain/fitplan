@@ -118,9 +118,9 @@ def test_explain_replan_disturbance_bound() -> None:
     contained = ReplanResult(plan=plan, metrics=ReplanMetrics(disturbance=1))
     exceeded = ReplanResult(plan=plan, metrics=ReplanMetrics(disturbance=3))
 
-    hit_ok = explain_replan(contained, [], affected_count=2)["constraint_hits"][0]
-    hit_bad = explain_replan(exceeded, [], affected_count=2)["constraint_hits"][0]
+    hit_ok = explain_replan(contained, [], affected_count=2).constraint_hits[0]
+    hit_bad = explain_replan(exceeded, [], affected_count=2).constraint_hits[0]
 
-    assert hit_ok["constraint_id"] == "replan_disturbance"
-    assert hit_ok["satisfied"] is True
-    assert hit_bad["satisfied"] is False
+    assert hit_ok.constraint_id == "replan_disturbance"
+    assert hit_ok.satisfied is True
+    assert hit_bad.satisfied is False

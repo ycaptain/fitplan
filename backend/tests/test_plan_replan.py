@@ -337,3 +337,19 @@ def test_replan_endpoint_unknown_plan_returns_404(client: TestClient) -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_replan_response_carries_explanation(client: TestClient) -> None:
+    response = client.post(
+        "/api/plan/replan",
+        json={
+            "plan_id": "ppl-base-001",
+            "trigger_type": "session_missed",
+            "payload": {"session_id": "0-push-18:00"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["explanation"] is not None
+    assert body["explanation"]["text_summary"] == body["reason"]

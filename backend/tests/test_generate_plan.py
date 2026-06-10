@@ -169,3 +169,23 @@ def test_generate_rejects_unknown_algorithm() -> None:
         json={"split": "ppl", "sessions_per_week": 3, "algorithm": "nonsense"},
     )
     assert resp.status_code == 422
+
+
+def test_generate_response_carries_explanation() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan/generate",
+        json={"split": "ppl", "sessions_per_week": 3},
+    )
+    assert resp.status_code == 200
+    explanation = resp.json()["explanation"]
+    assert explanation["text_summary"]
+    assert {h["constraint_id"] for h in explanation["constraint_hits"]} == {
+        "fixed_event",
+        "recovery_interval",
+        "weekly_distribution",
+    }
