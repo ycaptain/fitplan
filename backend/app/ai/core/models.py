@@ -78,12 +78,25 @@ class StrategyStep(BaseModel):
     score_after: float = 0.0
 
 
+class ConstraintHit(BaseModel):
+    constraint_id: str
+    satisfied: bool
+    explanation: str = ""
+
+
+class PlanExplanation(BaseModel):
+    constraint_hits: list[ConstraintHit] = Field(default_factory=list)
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
+    text_summary: str = ""
+
+
 class Plan(BaseModel):
     id: str
     generated_at: str
     sessions: list[ScheduledSession] = Field(default_factory=list)
     scores: Scores = Field(default_factory=Scores)
     strategy_trace: list[StrategyStep] = Field(default_factory=list)
+    explanation: PlanExplanation | None = None
 
 
 class PlanDelta(BaseModel):
@@ -114,6 +127,7 @@ class ReplanResult(BaseModel):
     diff: ReplanDiff = Field(default_factory=ReplanDiff)
     metrics: ReplanMetrics = Field(default_factory=ReplanMetrics)
     reason: str = ""
+    explanation: PlanExplanation | None = None
 
 
 class Preferences(BaseModel):
