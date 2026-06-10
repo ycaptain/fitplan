@@ -30,9 +30,10 @@ def generate_initial_plan(req: GeneratePlanRequest) -> Plan:
     for i in range(req.sessions_per_week):
         session_type = session_types[i % len(session_types)]
         rotated_days = day_order[i:] + day_order[:i]
-        duration = min(
-            session_type.duration_min,
-            req.preferences.max_session_duration_min,
+        duration = _goal_adjusted_duration(
+            session_type=session_type,
+            goal=req.goal,
+            max_duration=req.preferences.max_session_duration_min,
         )
 
         placed = False
@@ -325,3 +326,20 @@ def _day_order(sessions_per_week: int) -> list[int]:
         return [0, 1, 3, 5, 6, 2, 4]
 
     return [0, 1, 2, 3, 4, 5, 6]
+
+def _goal_adjusted_duration(
+    session_type: SessionType,
+    goal: str,
+    max_duration: int,
+) -> int:
+    base = session_type.duration_min
+
+    if goal == "bulk":
+        adjusted = base + 10
+    elif goal == "cut":
+        adjusted = base - 10
+    else:
+        adjusted = base
+
+    adjusted = max(30, adjusted)
+    return min(adjusted, max_duration)
