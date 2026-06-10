@@ -5,13 +5,14 @@ from datetime import UTC, datetime
 from time import perf_counter
 
 from app.ai.core.models import GeneratePlanRequest, Plan, ScheduledSession, StrategyStep
-from app.ai.core.scoring import score_plan
-from app.ai.csp.backtracking import (
-    _build_session_types,
-    _candidate_starts,
-    _day_order,
-    _is_valid_candidate,
+from app.ai.core.scheduling import (
+    build_candidate,
+    build_session_types,
+    day_order,
+    is_valid_candidate,
+    preferred_candidate_starts,
 )
+from app.ai.core.scoring import score_plan
 
 
 @dataclass
@@ -23,10 +24,10 @@ class BeamState:
 def generate_plan_beam(req: GeneratePlanRequest, beam_width: int = 3) -> Plan:
     start_time = perf_counter()
 
-    session_types = _build_session_types(req.split)
+    session_types = build_session_types(req.split)
     session_type_map = {s.id: s for s in session_types}
-    candidate_starts = _candidate_starts(req.preferences.preferred_time_of_day)
-    day_order = _day_order(req.sessions_per_week)
+    candidate_starts = preferred_candidate_starts(req.preferences.preferred_time_of_day)
+    ordered_days = day_order(req.sessions_per_week)
 
     beam: list[BeamState] = [BeamState(sessions=[])]
     total_nodes = 0
@@ -35,7 +36,7 @@ def generate_plan_beam(req: GeneratePlanRequest, beam_width: int = 3) -> Plan:
         session_type = session_types[i % len(session_types)]
         candidates: list[BeamState] = []
 
-        rotated_days = day_order[i:] + day_order[:i]
+        rotated_days = ordered_days[i:] + ordered_days[:i]
 
         for state in beam:
             for day in rotated_days:
@@ -47,16 +48,9 @@ def generate_plan_beam(req: GeneratePlanRequest, beam_width: int = 3) -> Plan:
                         req.preferences.max_session_duration_min,
                     )
 
-                    candidate = ScheduledSession(
-                        id=ScheduledSession.derive_id(day, session_type.id, start),
-                        session_type_id=session_type.id,
-                        day=day,
-                        start=start,
-                        duration_min=duration,
-                        locked=False,
-                    )
+                    candidate = build_candidate(session_type, day, start, duration)
 
-                    if not _is_valid_candidate(
+                    if not is_valid_candidate(
                         candidate=candidate,
                         existing=state.sessions,
                         fixed_events=req.fixed_events,

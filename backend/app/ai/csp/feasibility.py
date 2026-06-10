@@ -11,6 +11,7 @@ from app.ai.core.models import (
     ScheduledSession,
     SessionType,
 )
+from app.ai.core.scheduling import minutes_of, spans_overlap
 
 DAYS_IN_WEEK: Final[int] = 7
 EARLIEST_START_MINUTES: Final[int] = 6 * 60
@@ -90,11 +91,11 @@ def _collect_violations(
 
     for i, a in enumerate(sessions):
         for b in sessions[i + 1 :]:
-            if a.day == b.day and _spans_overlap(
-                _minutes(a.start),
-                _minutes(a.start) + a.duration_min,
-                _minutes(b.start),
-                _minutes(b.start) + b.duration_min,
+            if a.day == b.day and spans_overlap(
+                minutes_of(a.start),
+                minutes_of(a.start) + a.duration_min,
+                minutes_of(b.start),
+                minutes_of(b.start) + b.duration_min,
             ):
                 violations.append(
                     ConstraintViolation(
@@ -115,17 +116,17 @@ def _has_open_slot(
     others = [s for s in sessions if s.id != session.id]
     for day in range(DAYS_IN_WEEK):
         for start in _candidate_starts(sessions, events):
-            if _minutes(start) + session.duration_min > LATEST_END_MINUTES:
+            if minutes_of(start) + session.duration_min > LATEST_END_MINUTES:
                 continue
             if any(_overlaps_event(session, day, start, e) for e in events):
                 continue
             if any(
                 o.day == day
-                and _spans_overlap(
-                    _minutes(start),
-                    _minutes(start) + session.duration_min,
-                    _minutes(o.start),
-                    _minutes(o.start) + o.duration_min,
+                and spans_overlap(
+                    minutes_of(start),
+                    minutes_of(start) + session.duration_min,
+                    minutes_of(o.start),
+                    minutes_of(o.start) + o.duration_min,
                 )
                 for o in others
             ):
@@ -145,8 +146,8 @@ def _candidate_starts(
             starts.add(end)
     starts.update(("07:00", "12:00", "17:00", "18:00", "19:00"))
     return sorted(
-        (s for s in starts if _minutes(s) >= EARLIEST_START_MINUTES),
-        key=_minutes,
+        (s for s in starts if minutes_of(s) >= EARLIEST_START_MINUTES),
+        key=minutes_of,
     )
 
 
@@ -158,16 +159,7 @@ def _overlaps_event(
 ) -> bool:
     if event.params.get("day_of_week") != day:
         return False
-    s_start = _minutes(start)
-    e_start = _minutes(str(event.params.get("start", "00:00")))
-    e_end = _minutes(str(event.params.get("end", "00:00")))
-    return _spans_overlap(s_start, s_start + session.duration_min, e_start, e_end)
-
-
-def _spans_overlap(start_a: int, end_a: int, start_b: int, end_b: int) -> bool:
-    return start_a < end_b and start_b < end_a
-
-
-def _minutes(hhmm: str) -> int:
-    hours, minutes = hhmm.split(":")
-    return int(hours) * 60 + int(minutes)
+    s_start = minutes_of(start)
+    e_start = minutes_of(str(event.params.get("start", "00:00")))
+    e_end = minutes_of(str(event.params.get("end", "00:00")))
+    return spans_overlap(s_start, s_start + session.duration_min, e_start, e_end)
