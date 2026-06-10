@@ -53,3 +53,24 @@ fitplan-ai/
 ├─ scripts/eval/   offline evaluation harness
 └─ docs/           design and contracts
 ```
+## Reproducing Results
+
+Run all backend tests:
+
+```bash
+make test
+```
+
+Run the planner evaluation:
+
+```bash
+python scripts/eval/evaluate_baselines.py
+```
+
+The evaluation compares:
+
+* CSP Planner
+* Beam Search Planner
+* Greedy Baseline
+
+and reports planning quality metrics such as score, recovery, conflicts, and search effort.
