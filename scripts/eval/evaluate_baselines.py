@@ -4,9 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT / "backend"))
 
-from app.ai.csp.backtracking import generate_initial_plan
 from app.ai.baselines.greedy import generate_greedy_baseline
 from app.ai.core.models import GeneratePlanRequest, Preferences
+from app.ai.csp.backtracking import generate_initial_plan
+from app.ai.search.beam_search import generate_plan_beam
+
 
 req = GeneratePlanRequest(
     goal="general",
@@ -14,9 +16,6 @@ req = GeneratePlanRequest(
     sessions_per_week=4,
     preferences=Preferences(),
 )
-
-csp_plan = generate_initial_plan(req)
-greedy_plan = generate_greedy_baseline(req)
 
 
 def print_plan(name, plan):
@@ -35,5 +34,10 @@ def print_plan(name, plan):
         )
 
 
+csp_plan = generate_initial_plan(req)
+beam_plan = generate_plan_beam(req)
+greedy_plan = generate_greedy_baseline(req)
+
 print_plan("CSP planner", csp_plan)
+print_plan("Beam Search", beam_plan)
 print_plan("Greedy baseline", greedy_plan)
