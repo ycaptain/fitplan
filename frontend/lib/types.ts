@@ -116,12 +116,15 @@ export interface Preferences {
   max_session_duration_min: number;
 }
 
+export type GeneratorName = "csp_bt_fc" | "beam_search" | "greedy_baseline";
+
 export interface GeneratePlanRequest {
   goal: Goal;
   split: SplitName;
   sessions_per_week: number;
   fixed_events: FixedEvent[];
   preferences: Preferences;
+  algorithm?: GeneratorName;
 }
 
 export interface ReplanRequest {

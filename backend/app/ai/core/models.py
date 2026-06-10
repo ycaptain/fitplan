@@ -121,12 +121,16 @@ class Preferences(BaseModel):
     max_session_duration_min: int = 90
 
 
+GeneratorName = Literal["csp_bt_fc", "beam_search", "greedy_baseline"]
+
+
 class GeneratePlanRequest(BaseModel):
     goal: Goal = "general"
     split: SplitName = "ppl"
     sessions_per_week: int = 4
     fixed_events: list[FixedEvent] = Field(default_factory=list)
     preferences: Preferences = Field(default_factory=Preferences)
+    algorithm: GeneratorName = "csp_bt_fc"
 
 
 ReplanMode = Literal["minimal_disruption", "re_optimize"]
