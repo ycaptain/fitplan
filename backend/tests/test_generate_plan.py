@@ -138,3 +138,34 @@ def test_goal_adjustment_applies_to_all_generated_sessions() -> None:
     ):
         assert bulk_session.session_type_id == general_session.session_type_id
         assert bulk_session.duration_min >= general_session.duration_min
+
+
+def test_generate_with_algorithm_selection() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    for algorithm, trace_name in [
+        ("greedy_baseline", "greedy_baseline"),
+        ("beam_search", "beam_search"),
+    ]:
+        resp = client.post(
+            "/api/plan/generate",
+            json={"split": "ppl", "sessions_per_week": 3, "algorithm": algorithm},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["strategy_trace"][-1]["algorithm"] == trace_name
+
+
+def test_generate_rejects_unknown_algorithm() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan/generate",
+        json={"split": "ppl", "sessions_per_week": 3, "algorithm": "nonsense"},
+    )
+    assert resp.status_code == 422
