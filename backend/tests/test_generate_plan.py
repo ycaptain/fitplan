@@ -95,3 +95,46 @@ def test_goal_adjusts_session_duration() -> None:
 
     assert bulk_first_duration > general_first_duration
     assert cut_first_duration < general_first_duration
+
+def test_goal_adjusted_duration_respects_max_duration() -> None:
+    plan = generate_initial_plan(
+        _request(
+            goal="bulk",
+            preferences=Preferences(
+                preferred_time_of_day="any",
+                max_session_duration_min=65,
+            ),
+        )
+    )
+
+    assert plan.sessions[0].duration_min == 65
+
+
+def test_cut_duration_does_not_go_below_safe_minimum() -> None:
+    plan = generate_initial_plan(
+        _request(
+            goal="cut",
+            preferences=Preferences(
+                preferred_time_of_day="any",
+                max_session_duration_min=35,
+            ),
+        )
+    )
+
+    for session in plan.sessions:
+        assert session.duration_min >= 30
+
+
+def test_goal_adjustment_applies_to_all_generated_sessions() -> None:
+    bulk_plan = generate_initial_plan(_request(goal="bulk"))
+    general_plan = generate_initial_plan(_request(goal="general"))
+
+    assert len(bulk_plan.sessions) == len(general_plan.sessions)
+
+    for bulk_session, general_session in zip(
+        bulk_plan.sessions,
+        general_plan.sessions,
+        strict=False,
+    ):
+        assert bulk_session.session_type_id == general_session.session_type_id
+        assert bulk_session.duration_min >= general_session.duration_min
