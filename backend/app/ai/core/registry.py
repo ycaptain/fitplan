@@ -7,6 +7,7 @@ from typing import Any, Final
 class AlgorithmKey:
     CSP_BT_FC: Final[str] = "csp_bt_fc"
     GA_GENERATE: Final[str] = "ga_generate"
+    BEAM_SEARCH: Final[str] = "beam_search"
     HILL_CLIMBING: Final[str] = "hill_climbing"
     SIMULATED_ANNEALING: Final[str] = "simulated_annealing"
     ORCHESTRATE_REPLAN: Final[str] = "orchestrate_replan"
