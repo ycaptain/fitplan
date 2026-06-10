@@ -83,3 +83,15 @@ def test_capacity_overflow_doubles_up_with_max_gap() -> None:
 def _to_minutes(hhmm: str) -> int:
     h, m = hhmm.split(":")
     return int(h) * 60 + int(m)
+
+def test_goal_adjusts_session_duration() -> None:
+    bulk_plan = generate_initial_plan(_request(goal="bulk"))
+    cut_plan = generate_initial_plan(_request(goal="cut"))
+    general_plan = generate_initial_plan(_request(goal="general"))
+
+    bulk_first_duration = bulk_plan.sessions[0].duration_min
+    cut_first_duration = cut_plan.sessions[0].duration_min
+    general_first_duration = general_plan.sessions[0].duration_min
+
+    assert bulk_first_duration > general_first_duration
+    assert cut_first_duration < general_first_duration
