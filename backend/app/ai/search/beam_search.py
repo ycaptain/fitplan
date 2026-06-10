@@ -4,7 +4,14 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter
 
-from app.ai.core.models import GeneratePlanRequest, Plan, ScheduledSession, StrategyStep
+from app.ai.core import registry
+from app.ai.core.models import (
+    Constraint,
+    GeneratePlanRequest,
+    Plan,
+    ScheduledSession,
+    StrategyStep,
+)
 from app.ai.core.scheduling import (
     build_candidate,
     build_session_types,
@@ -21,7 +28,13 @@ class BeamState:
     nodes: int = 0
 
 
-def generate_plan_beam(req: GeneratePlanRequest, beam_width: int = 3) -> Plan:
+@registry.register(registry.AlgorithmKey.BEAM_SEARCH)
+def generate_plan_beam(
+    req: GeneratePlanRequest,
+    constraints: list[Constraint] | None = None,
+    *,
+    beam_width: int = 3,
+) -> Plan:
     start_time = perf_counter()
 
     session_types = build_session_types(req.split)

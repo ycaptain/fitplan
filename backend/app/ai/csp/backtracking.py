@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from time import perf_counter
 
+from app.ai.core import registry
 from app.ai.core.models import (
+    Constraint,
     GeneratePlanRequest,
     Plan,
     ScheduledSession,
@@ -21,7 +23,11 @@ from app.ai.core.scheduling import (
 from app.ai.core.scoring import score_plan
 
 
-def generate_initial_plan(req: GeneratePlanRequest) -> Plan:
+@registry.register(registry.AlgorithmKey.CSP_BT_FC)
+def generate_initial_plan(
+    req: GeneratePlanRequest,
+    constraints: list[Constraint] | None = None,
+) -> Plan:
     start_time = perf_counter()
 
     session_types = build_session_types(req.split)
