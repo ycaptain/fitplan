@@ -22,8 +22,7 @@ from app.ai.csp.feasibility import check_feasibility
 
 INFEASIBLE_REASON: Final[str] = "infeasible: manual edit required"
 
-# Above this share of affected sessions a re-optimize replan escapes local
-# optima better with simulated annealing than with steepest-ascent HC.
+# beyond this ratio SA outperforms steepest-ascent HC on re_optimize replans
 HC_AFFECTED_RATIO_THRESHOLD: Final[float] = 0.3
 RE_OPTIMIZE_DISTURBANCE_PENALTY: Final[float] = 0.5
 
@@ -88,13 +87,6 @@ def _select_replanner(
     affected: set[str],
     mode: ReplanMode,
 ) -> tuple[str, Plan, dict]:
-    """Pick the local-search algorithm and lock policy for this replan.
-
-    minimal_disruption freezes everything outside the affected set and runs
-    hill climbing. re_optimize lets every session move (a disturbance penalty
-    keeps gratuitous moves in check) and escalates to simulated annealing when
-    the affected ratio crosses HC_AFFECTED_RATIO_THRESHOLD.
-    """
     if mode == "re_optimize":
         affected_ratio = len(affected) / max(1, len(plan.sessions))
         key = (

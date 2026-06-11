@@ -13,8 +13,7 @@ from app.ai.core.models import (
 from app.ai.core.scoring import count_hard_violations, score_plan
 from app.ai.local.neighbourhood import candidate_starts, random_neighbour
 
-# Hard violations must dominate any achievable soft-score difference so the
-# scalar energy preserves the lexicographic priority used by hill climbing.
+# large enough that fixing a hard violation always beats any soft-score gain
 HARD_PENALTY: Final[float] = 100.0
 MIN_TEMPERATURE: Final[float] = 1e-4
 MAX_EXPONENT: Final[float] = 50.0
