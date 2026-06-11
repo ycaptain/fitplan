@@ -12,6 +12,7 @@ import type {
   GeneratePlanRequest,
   Goal,
   Plan,
+  PlanExplanation,
   ReplanDiff,
   ScheduledSession,
   SplitName,
@@ -36,6 +37,7 @@ export default function PlanPage() {
   >("any");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [diff, setDiff] = useState<ReplanDiff | null>(null);
+  const [explanation, setExplanation] = useState<PlanExplanation | null>(null);
   const [pendingEvent, setPendingEvent] = useState<FixedEvent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,9 @@ export default function PlanPage() {
     setPendingEvent(null);
 
     try {
-      setPlan(await generatePlan(request));
+      const generated = await generatePlan(request);
+      setPlan(generated);
+      setExplanation(generated.explanation ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generate failed");
     } finally {
@@ -118,6 +122,7 @@ export default function PlanPage() {
       });
       setPlan(result.plan);
       setDiff(result.diff);
+      setExplanation(result.explanation ?? null);
       setPendingEvent(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Replan failed");
@@ -145,6 +150,8 @@ export default function PlanPage() {
       </header>
 
       <Stats plan={plan} lastStep={lastStep} diff={diff} />
+
+      <ExplanationPanel explanation={explanation} />
 
       {pendingEvent ? (
         <ConflictBanner
@@ -257,6 +264,38 @@ function Stats({
       <Stat label="Score" value={String(plan.scores.total)} />
       {diff ? <Stat label="Moved" value={String(movedCount)} /> : null}
     </dl>
+  );
+}
+
+function ExplanationPanel({
+  explanation,
+}: {
+  explanation: PlanExplanation | null;
+}) {
+  if (!explanation) return null;
+
+  return (
+    <section className="space-y-2 rounded border border-slate-300 bg-white px-4 py-3 text-sm">
+      <p className="text-slate-800">{explanation.text_summary}</p>
+      <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
+        {explanation.constraint_hits.map((hit) => (
+          <li key={hit.constraint_id} className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={hit.satisfied ? "text-emerald-600" : "text-rose-600"}
+            >
+              {hit.satisfied ? "✓" : "✗"}
+            </span>
+            <span
+              className={hit.satisfied ? "text-slate-600" : "font-medium text-rose-800"}
+              title={hit.explanation}
+            >
+              {hit.constraint_id.replace(/_/g, " ")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
