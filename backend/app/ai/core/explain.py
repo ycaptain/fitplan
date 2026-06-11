@@ -17,9 +17,13 @@ REPLAN_REASON_TEMPLATE: Final[str] = (
 )
 
 
+def _fmt(algorithm_key: str) -> str:
+    return algorithm_key.replace("_", " ").title()
+
+
 def explain_plan(plan: Plan, constraints: list[Constraint]) -> PlanExplanation:
     trace = plan.strategy_trace
-    algorithm = trace[-1].algorithm if trace else "planner"
+    algorithm = _fmt(trace[-1].algorithm) if trace else "Planner"
     nodes = trace[-1].nodes if trace else 0
     training_days = len({s.day for s in plan.sessions})
 
@@ -64,7 +68,7 @@ def explain_replan(
     affected_count: int | None = None,
 ) -> PlanExplanation:
     trace = result.plan.strategy_trace
-    trigger = trace[-1].algorithm if trace else "replan"
+    trigger = _fmt(trace[-1].algorithm) if trace else "Replan"
     disturbance_bound = (
         affected_count if affected_count is not None else len(result.plan.sessions)
     )

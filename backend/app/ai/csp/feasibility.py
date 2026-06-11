@@ -24,13 +24,6 @@ def check_feasibility(
     *,
     session_types: dict[str, SessionType] | None = None,
 ) -> CSPResult:
-    """Forward-checking style re-validation of an existing plan.
-
-    A plan is feasible when every session in violation of a hard constraint is
-    unlocked and still has at least one conflict-free (day, start) slot left in
-    its domain. Locked sessions in violation, or sessions whose domain has been
-    wiped out, make the plan infeasible and require a manual edit.
-    """
     events = [c for c in constraints if c.type == ConstraintType.FIXED_EVENT]
     violations = _collect_violations(plan.sessions, events)
     locked_ids = [s.id for s in plan.sessions if s.locked]
