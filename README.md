@@ -53,6 +53,7 @@ fitplan-ai/
 ├─ scripts/eval/   offline evaluation harness
 └─ docs/           design and contracts
 ```
+
 ## Reproducing Results
 
 Run all backend tests:
@@ -64,13 +65,11 @@ make test
 Run the planner evaluation:
 
 ```bash
-python scripts/eval/evaluate_baselines.py
+make eval
 ```
 
-The evaluation compares:
-
-* CSP Planner
-* Beam Search Planner
-* Greedy Baseline
-
-and reports planning quality metrics such as score, recovery, conflicts, and search effort.
+This compares the initial-plan generators (CSP backtracking, Beam Search,
+Greedy baseline) and the replanners (Hill Climbing, Simulated Annealing)
+across ~36 disturbance scenarios, reports score / recovery / conflicts /
+search effort per algorithm, and writes the full markdown report — including
+the HC-vs-SA routing-threshold calibration — to `docs/eval_report.md`.

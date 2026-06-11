@@ -84,17 +84,24 @@ Example response:
 
 ## AI Methods
 
-### CSP Planner
+All algorithms register themselves in `app/ai/core/registry.py` under a string
+key; the API and the eval harness look them up there.
 
-The primary planner uses backtracking with forward checking to generate a feasible weekly workout schedule while satisfying hard constraints such as fixed events and recovery requirements.
+### CSP Planner (`csp_bt_fc`)
 
-### Greedy Baseline
+The primary planner uses backtracking with forward checking to generate a feasible weekly workout schedule while satisfying hard constraints such as fixed events and recovery requirements. `app/ai/csp/feasibility.py` re-uses the same constraint checks to re-validate an existing plan before each replan (domain-wipeout detection).
+
+### Greedy Baseline (`greedy_baseline`)
 
 A simple baseline planner that places sessions sequentially without global reasoning. It is used as a comparison method during evaluation.
 
-### Beam Search
+### Beam Search (`beam_search`)
 
 An experimental search-based planner that keeps multiple promising partial schedules during planning and selects the highest-scoring candidate.
+
+### Hill Climbing (`hill_climbing`) and Simulated Annealing (`simulated_annealing`)
+
+Local-search replanners used by the adaptability orchestrator. `minimal_disruption` replans lock unaffected sessions and run steepest-ascent HC; `re_optimize` replans unlock everything and escalate to SA once the affected ratio exceeds `HC_AFFECTED_RATIO_THRESHOLD = 0.3`.
 
 ## Reproducing Results
 
@@ -104,27 +111,13 @@ Run all backend tests:
 pytest
 ```
 
-Expected output:
-
-```text
-All tests should pass.
-```
-
-Run the evaluation script:
+Run the evaluation harness (from the repo root):
 
 ```bash
-python ../scripts/eval/evaluate_baselines.py
+make eval
 ```
 
-This compares:
-
-* CSP Planner
-* Beam Search Planner
-* Greedy Baseline
-
-and reports:
-
-- Total score
-- Recovery score
-- Constraint violations
-- Search nodes explored
+This compares the initial-plan generators (CSP, Beam Search, Greedy) and the
+replanners (HC, SA) across ~36 disturbance scenarios, and writes the full
+report — score, recovery, conflicts, search effort, plus the routing-threshold
+calibration — to `docs/eval_report.md`.

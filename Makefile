@@ -44,7 +44,7 @@ eval:
 	cd backend && .venv/bin/python ../scripts/eval/run_eval.py
 
 lint:
-	cd backend && .venv/bin/ruff check app tests
+	cd backend && .venv/bin/ruff check app tests ../scripts
 	cd frontend && pnpm lint
 
 clean:
