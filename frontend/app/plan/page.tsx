@@ -108,7 +108,7 @@ export default function PlanPage() {
       const result = await replan({
         plan_id: plan.id,
         trigger_type: "fixed_event_added",
-        mode: "minimal_disruption",
+        mode: "re_optimize",
         payload: {
           id: pendingEvent.id,
           day_of_week: pendingEvent.day_of_week,
@@ -287,7 +287,9 @@ function ExplanationPanel({
               {hit.satisfied ? "✓" : "✗"}
             </span>
             <span
-              className={hit.satisfied ? "text-slate-600" : "font-medium text-rose-800"}
+              className={
+                hit.satisfied ? "text-slate-600" : "font-medium text-rose-800"
+              }
               title={hit.explanation}
             >
               {hit.constraint_id.replace(/_/g, " ")}

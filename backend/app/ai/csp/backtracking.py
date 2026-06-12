@@ -110,7 +110,7 @@ def generate_initial_plan(
     elapsed_ms = int((perf_counter() - start_time) * 1000)
     plan.strategy_trace.append(
         StrategyStep(
-            algorithm="csp_backtracking_forward_checking_mvp",
+            algorithm="csp_bt_fc",
             role="feasibility",
             nodes=nodes,
             iterations=0,
