@@ -1,84 +1,148 @@
+"""Genetic algorithm for initial plan generation."""
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
+import uuid
 from datetime import UTC, datetime
 from time import perf_counter
 
-from app.ai.core.models import GeneratePlanRequest, Plan, ScheduledSession, StrategyStep
-from app.ai.core.scoring import score_plan
-from app.ai.csp.backtracking import (
-    _build_session_types,
-    _candidate_starts,
+from app.ai.core import registry
+from app.ai.core.models import (
+    Constraint,
+    GeneratePlanRequest,
+    Plan,
+    StrategyStep,
 )
+from app.ai.core.scheduling import (
+    build_candidate,
+    build_session_types,
+    minutes_of,
+    preferred_candidate_starts,
+)
+from app.ai.core.scoring import score_plan
+
+POP_SIZE = 20
+N_GEN = 40
+MUTATION_RATE = 0.2
+TOURNAMENT_K = 3
+ELITE_N = 2
 
 
-@dataclass
-class Chromosome:
-    genes: list[tuple[int, str]]
-    fitness: float = 0.0
-
-
-def generate_plan_ga(
+def _build_plan(
+    chromosome: list[int],
+    session_types: list,
+    starts: list[str],
     req: GeneratePlanRequest,
-    *,
-    population_size: int = 20,
-    generations: int = 40,
-    mutation_rate: float = 0.15,
-    random_seed: int | None = 42,
+    stype_map: dict,
 ) -> Plan:
-    start_time = perf_counter()
+    sessions = []
+    day_end: dict[int, int] = {}
 
-    rng = random.Random(random_seed)
-    session_types = _build_session_types(req.split)
-    session_type_map = {s.id: s for s in session_types}
-    candidate_starts = _candidate_starts(req.preferences.preferred_time_of_day)
+    for day, stype in zip(chromosome, session_types, strict=False):
+        duration = min(stype.duration_min, req.preferences.max_session_duration_min)
+        base = minutes_of(starts[0])
+        start_min = max(base, day_end.get(day, base))
+        start_min = min(start_min, 22 * 60 - duration)
+        start_min = max(start_min, 6 * 60)
+        h, m = divmod(start_min, 60)
+        start = f"{h:02d}:{m:02d}"
 
-    population = [
-        _random_chromosome(req.sessions_per_week, candidate_starts, rng)
-        for _ in range(population_size)
-    ]
+        sessions.append(build_candidate(stype, day, start, duration))
+        day_end[day] = start_min + duration
 
-    nodes = 0
+    plan = Plan(
+        id=f"ga-plan-{uuid.uuid4().hex[:8]}",
+        generated_at=datetime.now(UTC).isoformat(),
+        sessions=sessions,
+    )
+    plan.scores = score_plan(plan, constraints=[], session_types=stype_map)
+    return plan
 
-    for _ in range(generations):
-        for chromosome in population:
-            plan = _decode_chromosome(req, chromosome, session_types)
-            chromosome.fitness = _fitness(plan, session_type_map)
-            nodes += len(chromosome.genes)
 
-        population.sort(key=lambda c: c.fitness, reverse=True)
+def _fitness(plan: Plan, constraints: list[Constraint], stype_map: dict) -> float:
+    return score_plan(plan, constraints=constraints, session_types=stype_map).total
 
-        next_population = population[:2]
 
-        while len(next_population) < population_size:
-            parent_a = _tournament_select(population, rng)
-            parent_b = _tournament_select(population, rng)
-            child = _crossover(parent_a, parent_b, rng)
-            _mutate(child, candidate_starts, mutation_rate, rng)
-            next_population.append(child)
+def _tournament(fitnesses: list[float], rng: random.Random) -> int:
+    idx = rng.sample(range(len(fitnesses)), min(TOURNAMENT_K, len(fitnesses)))
+    return max(idx, key=lambda i: fitnesses[i])
 
-        population = next_population
 
-    for chromosome in population:
-        plan = _decode_chromosome(req, chromosome, session_types)
-        chromosome.fitness = _fitness(plan, session_type_map)
+def _crossover(
+    a: list[int], b: list[int], rng: random.Random
+) -> tuple[list[int], list[int]]:
+    if len(a) <= 1:
+        return a[:], b[:]
+    point = rng.randint(1, len(a) - 1)
+    return a[:point] + b[point:], b[:point] + a[point:]
 
-    best = max(population, key=lambda c: c.fitness)
-    best_plan = _decode_chromosome(req, best, session_types)
+
+def _mutate(chromosome: list[int], rng: random.Random) -> list[int]:
+    c = chromosome[:]
+    i = rng.randrange(len(c))
+    c[i] = rng.randint(0, 6)
+    return c
+
+
+@registry.register(registry.AlgorithmKey.GA_GENERATE)
+def ga_generate(
+    req: GeneratePlanRequest,
+    constraints: list[Constraint] | None = None,
+    **kwargs,
+) -> Plan:
+    t0 = perf_counter()
+    seed = kwargs.get("random_seed")
+    rng = random.Random(seed)
+    constraints = constraints or []
+
+    session_types = build_session_types(req.split)
+    stype_map = {s.id: s for s in session_types}
+    starts = preferred_candidate_starts(req.preferences.preferred_time_of_day)
+    n = req.sessions_per_week
+    stypes = [session_types[i % len(session_types)] for i in range(n)]
+
+    pop = [[rng.randint(0, 6) for _ in range(n)] for _ in range(POP_SIZE)]
+
+    best_plan: Plan | None = None
+    best_fit = float("-inf")
+
+    for _ in range(N_GEN):
+        plans = [_build_plan(c, stypes, starts, req, stype_map) for c in pop]
+        fits = [_fitness(p, constraints, stype_map) for p in plans]
+
+        for p, f in zip(plans, fits, strict=False):
+            if f > best_fit:
+                best_fit = f
+                best_plan = p
+
+        order = sorted(range(POP_SIZE), key=lambda i: fits[i], reverse=True)
+        new_pop = [pop[i][:] for i in order[:ELITE_N]]
+
+        while len(new_pop) < POP_SIZE:
+            p1 = pop[_tournament(fits, rng)]
+            p2 = pop[_tournament(fits, rng)]
+            c1, c2 = _crossover(p1, p2, rng)
+            if rng.random() < MUTATION_RATE:
+                c1 = _mutate(c1, rng)
+            if rng.random() < MUTATION_RATE:
+                c2 = _mutate(c2, rng)
+            new_pop.append(c1)
+            if len(new_pop) < POP_SIZE:
+                new_pop.append(c2)
+
+        pop = new_pop
+
     best_plan.scores = score_plan(
-        best_plan,
-        constraints=[],
-        session_types=session_type_map,
+        best_plan, constraints=constraints, session_types=stype_map
     )
 
-    elapsed_ms = int((perf_counter() - start_time) * 1000)
+    elapsed_ms = int((perf_counter() - t0) * 1000)
     best_plan.strategy_trace.append(
         StrategyStep(
-            algorithm="genetic_algorithm",
+            algorithm=registry.AlgorithmKey.GA_GENERATE,
             role="optimize",
-            nodes=nodes,
-            iterations=generations,
+            nodes=POP_SIZE * N_GEN,
+            iterations=N_GEN,
             time_ms=elapsed_ms,
             score_after=best_plan.scores.total,
         )
@@ -86,99 +150,4 @@ def generate_plan_ga(
 
     return best_plan
 
-
-def _random_chromosome(
-    sessions_per_week: int,
-    candidate_starts: list[str],
-    rng: random.Random,
-) -> Chromosome:
-    genes = [
-        (rng.randrange(7), rng.choice(candidate_starts))
-        for _ in range(sessions_per_week)
-    ]
-    return Chromosome(genes=genes)
-
-
-def _decode_chromosome(
-    req: GeneratePlanRequest,
-    chromosome: Chromosome,
-    session_types,
-) -> Plan:
-    sessions: list[ScheduledSession] = []
-
-    for i, (day, start) in enumerate(chromosome.genes):
-        session_type = session_types[i % len(session_types)]
-        duration = min(
-            session_type.duration_min,
-            req.preferences.max_session_duration_min,
-        )
-
-        candidate = ScheduledSession(
-            id=ScheduledSession.derive_id(day, session_type.id, start),
-            session_type_id=session_type.id,
-            day=day,
-            start=start,
-            duration_min=duration,
-            locked=False,
-        )
-
-        sessions.append(candidate)
-
-    return Plan(
-        id=f"ga-plan-{datetime.now(UTC).timestamp()}",
-        generated_at=datetime.now(UTC).isoformat(),
-        sessions=sessions,
-    )
-
-
-def _fitness(plan: Plan, session_type_map) -> float:
-    scores = score_plan(plan, constraints=[], session_types=session_type_map)
-
-    unique_days = len({s.day for s in plan.sessions})
-    spread_bonus = float(unique_days)
-
-    conflict_penalty = scores.conflicts * 10.0
-
-    return scores.total + spread_bonus - conflict_penalty
-
-
-def _tournament_select(
-    population: list[Chromosome],
-    rng: random.Random,
-    k: int = 3,
-) -> Chromosome:
-    contenders = rng.sample(population, k=min(k, len(population)))
-    return max(contenders, key=lambda c: c.fitness)
-
-
-def _crossover(
-    parent_a: Chromosome,
-    parent_b: Chromosome,
-    rng: random.Random,
-) -> Chromosome:
-    if len(parent_a.genes) <= 1:
-        return Chromosome(genes=parent_a.genes.copy())
-
-    point = rng.randrange(1, len(parent_a.genes))
-    genes = parent_a.genes[:point] + parent_b.genes[point:]
-    return Chromosome(genes=genes)
-
-
-def _mutate(
-    chromosome: Chromosome,
-    candidate_starts: list[str],
-    mutation_rate: float,
-    rng: random.Random,
-) -> None:
-    for i, gene in enumerate(chromosome.genes):
-        if rng.random() >= mutation_rate:
-            continue
-
-        day, start = gene
-
-        if rng.random() < 0.5:
-            day = rng.randrange(7)
-        else:
-            start = rng.choice(candidate_starts)
-
-        chromosome.genes[i] = (day, start)
+generate_plan_ga = ga_generate
