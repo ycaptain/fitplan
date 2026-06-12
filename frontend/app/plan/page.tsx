@@ -14,6 +14,7 @@ import type {
   Plan,
   PlanExplanation,
   ReplanDiff,
+  ReplanMode,
   ScheduledSession,
   SplitName,
   StrategyStep,
@@ -39,6 +40,7 @@ export default function PlanPage() {
   const [diff, setDiff] = useState<ReplanDiff | null>(null);
   const [explanation, setExplanation] = useState<PlanExplanation | null>(null);
   const [pendingEvent, setPendingEvent] = useState<FixedEvent | null>(null);
+  const [replanMode, setReplanMode] = useState<ReplanMode>("re_optimize");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +100,34 @@ export default function PlanPage() {
     }
   }
 
+  async function runOptimize() {
+    if (!plan) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const isoDate = new Date().toISOString().slice(0, 10);
+      const result = await replan({
+        plan_id: plan.id,
+        trigger_type: "state_changed",
+        mode: "re_optimize",
+        payload: {
+          date: isoDate,
+          sleep_hours: 8,
+          perceived_fatigue: 0,
+          missed_last_session: false,
+        },
+        fixed_events: events,
+      });
+      setPlan(result.plan);
+      setDiff(result.diff);
+      setExplanation(result.explanation ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Optimize failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function runReplan() {
     if (!plan || !pendingEvent) return;
 
@@ -108,7 +138,7 @@ export default function PlanPage() {
       const result = await replan({
         plan_id: plan.id,
         trigger_type: "fixed_event_added",
-        mode: "re_optimize",
+        mode: replanMode,
         payload: {
           id: pendingEvent.id,
           day_of_week: pendingEvent.day_of_week,
@@ -198,6 +228,17 @@ export default function PlanPage() {
             />
           </Field>
 
+          <Field label="Replan mode">
+            <select
+              value={replanMode}
+              onChange={(e) => setReplanMode(e.target.value as ReplanMode)}
+              className="w-full rounded border border-slate-400 bg-white px-2 py-1.5 text-sm text-slate-900"
+            >
+              <option value="minimal_disruption">Minimal disruption</option>
+              <option value="re_optimize">Re-optimize</option>
+            </select>
+          </Field>
+
           <p className="text-xs text-slate-600">
             Goal: <span className="font-semibold capitalize">{goal}</span> ·
             Time:{" "}
@@ -215,6 +256,17 @@ export default function PlanPage() {
           >
             {loading ? "Working…" : "Generate plan"}
           </button>
+
+          {plan && !pendingEvent ? (
+            <button
+              type="button"
+              onClick={runOptimize}
+              disabled={loading}
+              className="w-full rounded border border-slate-400 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              {loading ? "Working…" : "Optimize plan"}
+            </button>
+          ) : null}
 
           {error ? (
             <p className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
