@@ -37,10 +37,10 @@ def test_explain_plan_returns_score_breakdown_and_summary() -> None:
 
     explanation = explain_plan(plan, constraints=[])
 
-    assert explanation["score_breakdown"]["total"] == 1.0
-    assert explanation["score_breakdown"]["conflicts"] == 0.0
-    assert "csp_bt_fc generated" in explanation["text_summary"]
-    assert any(hit["constraint_id"] == "fixed_event" for hit in explanation["constraint_hits"])
+    assert explanation.score_breakdown["total"] == 1.0
+    assert explanation.score_breakdown["conflicts"] == 0.0
+    assert "generated" in explanation.text_summary.lower()
+    assert any(hit.constraint_id == "fixed_event" for hit in explanation.constraint_hits)
 
 
 def test_explain_plan_reports_conflicts() -> None:
@@ -60,11 +60,11 @@ def test_explain_plan_reports_conflicts() -> None:
     explanation = explain_plan(plan, constraints=[])
 
     fixed_event_hit = next(
-        hit for hit in explanation["constraint_hits"] if hit["constraint_id"] == "fixed_event"
+        hit for hit in explanation.constraint_hits if hit.constraint_id == "fixed_event"
     )
 
-    assert fixed_event_hit["satisfied"] is False
-    assert "2 conflict" in fixed_event_hit["explanation"]
+    assert fixed_event_hit.satisfied is False
+    assert "2 conflict" in fixed_event_hit.explanation
 
 
 def test_explain_replan_returns_disturbance_summary() -> None:
@@ -105,9 +105,9 @@ def test_explain_replan_returns_disturbance_summary() -> None:
 
     explanation = explain_replan(result, constraints=[])
 
-    assert explanation["score_breakdown"]["total"] == 1.0
-    assert "hill_climbing" in explanation["text_summary"]
+    assert explanation.score_breakdown["total"] == 1.0
+    assert "hill climbing" in explanation.text_summary.lower()
     assert any(
-        hit["constraint_id"] == "post_replan_conflicts"
-        for hit in explanation["constraint_hits"]
+        hit.constraint_id == "post_replan_conflicts"
+        for hit in explanation.constraint_hits
     )

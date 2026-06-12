@@ -23,7 +23,7 @@ def test_ga_generates_requested_sessions() -> None:
     plan = generate_plan_ga(_request(sessions_per_week=4), random_seed=42)
 
     assert len(plan.sessions) == 4
-    assert plan.strategy_trace[-1].algorithm == "genetic_algorithm"
+    assert plan.strategy_trace[-1].algorithm == "ga_generate"
     assert plan.strategy_trace[-1].iterations == 40
 
 
