@@ -5,8 +5,6 @@ training plan from user goals and constraints, and adapts the plan when
 conditions change (new fixed event, missed session, low-energy day,
 manual edit) using constraint propagation followed by local search.
 
-CS5100 Foundations of AI final project.
-
 ## Quickstart
 
 Prerequisites: Python 3.11+, Node.js 26+, and **pnpm 11**
@@ -69,7 +67,8 @@ make eval
 ```
 
 This compares the initial-plan generators (CSP backtracking, Beam Search,
-Greedy baseline) and the replanners (Hill Climbing, Simulated Annealing)
-across ~36 disturbance scenarios, reports score / recovery / conflicts /
-search effort per algorithm, and writes the full markdown report — including
-the HC-vs-SA routing-threshold calibration — to `docs/eval_report.md`.
+Genetic Algorithm, Greedy baseline) and the replanners (Hill Climbing,
+Simulated Annealing) across ~36 disturbance scenarios, reports score /
+recovery / conflicts / search effort per algorithm, and writes the full
+markdown report — including the HC-vs-SA routing-threshold calibration —
+to `docs/eval_report.md`.
