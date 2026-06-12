@@ -17,6 +17,7 @@ from statistics import mean
 
 from app.ai import baselines as _baselines  # noqa: F401
 from app.ai import csp as _csp  # noqa: F401
+from app.ai import ga as _ga  # noqa: F401
 from app.ai import local as _local  # noqa: F401
 from app.ai import search as _search  # noqa: F401
 from app.ai.adaptability.orchestrator import HC_AFFECTED_RATIO_THRESHOLD
@@ -29,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scenarios import generate_scenarios, load_plans  # noqa: E402
 
 SEED = 42
-GENERATORS = ["csp_bt_fc", "beam_search", "greedy_baseline"]
+GENERATORS = ["csp_bt_fc", "beam_search", "greedy_baseline", "ga_generate"]
 REPLANNERS = ["hill_climbing", "simulated_annealing"]
 PLAN_SPLITS = {
     "ppl-base-001": "ppl",
