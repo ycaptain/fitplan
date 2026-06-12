@@ -10,7 +10,6 @@ from app.ai.core.scoring import score_plan
 from app.ai.csp.backtracking import (
     _build_session_types,
     _candidate_starts,
-    _is_valid_candidate,
 )
 
 
