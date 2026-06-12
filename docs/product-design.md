@@ -20,12 +20,12 @@ variable weekly schedule. Goals are bulk, cut, or general fitness.
 
 ## 3. Differentiation
 
-| Existing tool | Gap we address |
-|---------------|----------------|
-| Hevy, Strong  | Logging only; no scheduling |
-| Notion / Google Calendar | Generic calendar; no domain constraints |
-| Fitbod        | Per-session recommendation; no week-level planning |
-| Chat assistants | Not verifiable; cannot adapt incrementally |
+| Existing tool            | Gap we address                                     |
+| ------------------------ | -------------------------------------------------- |
+| Hevy, Strong             | Logging only; no scheduling                        |
+| Notion / Google Calendar | Generic calendar; no domain constraints            |
+| Fitbod                   | Per-session recommendation; no week-level planning |
+| Chat assistants          | Not verifiable; cannot adapt incrementally         |
 
 The differentiator is explicit AI search and optimization with
 human-readable explanations.
@@ -113,11 +113,11 @@ top of the MVP pipeline once it is stable.
 The strategy router is intentionally simple: each user-facing mode maps
 to one or two algorithms. There is no automatic meta-planner.
 
-| User mode | Default algorithm | Purpose |
-|-----------|-------------------|---------|
-| Generate | CSP-BT + FC | Find a feasible weekly plan |
-| Minimal Disruption | Hill Climbing | Keep the existing plan, fix conflicts only |
-| Re-optimize | SA / GA | Explore alternative whole-week plans |
+| User mode          | Default algorithm | Purpose                                    |
+| ------------------ | ----------------- | ------------------------------------------ |
+| Generate           | CSP-BT + FC       | Find a feasible weekly plan                |
+| Minimal Disruption | Hill Climbing     | Keep the existing plan, fix conflicts only |
+| Re-optimize        | SA / GA           | Explore alternative whole-week plans       |
 
 ## 7. Adaptability
 
@@ -131,12 +131,12 @@ Triggers  →  CSP re-validation  →  Local replan  →  Explanation
 
 ### Triggers
 
-| Type | Source | Example | Delta |
-|------|--------|---------|-------|
-| `fixed_event_added` | calendar edit | a Wednesday meeting | append FixedEvent |
-| `session_missed` | user marks missed | skipped Monday push | flag session.status |
-| `state_changed` | daily check-in | bad sleep, high fatigue | update UserState |
-| `manual_edit` | user drags a session | move leg day | update session start |
+| Type                | Source               | Example                 | Delta                |
+| ------------------- | -------------------- | ----------------------- | -------------------- |
+| `fixed_event_added` | calendar edit        | a Wednesday meeting     | append FixedEvent    |
+| `session_missed`    | user marks missed    | skipped Monday push     | flag session.status  |
+| `state_changed`     | daily check-in       | bad sleep, high fatigue | update UserState     |
+| `manual_edit`       | user drags a session | move leg day            | update session start |
 
 All four are normalized into a `PlanDelta` so downstream logic is
 unaware of the trigger source.
@@ -173,22 +173,36 @@ constraints that triggered the change.
 
 1. User adds a meeting, marks a missed workout, reports low energy,
    or drags a session
-2. Trigger is normalized into a `PlanDelta`
-3. CSP re-validation locks unaffected sessions
-4. Hill climbing or simulated annealing produces a revised plan
-5. Diff view, metrics, and accept / reject
+2. User selects replan mode in the sidebar (Minimal Disruption or
+   Re-optimize); a conflict banner prompts the replan action
+3. Trigger is normalized into a `PlanDelta`
+4. Minimal Disruption: locks all unaffected sessions, HC moves only
+   those directly in conflict. Re-optimize: unlocks the whole plan,
+   HC/SA searches for a globally better layout with a disturbance
+   penalty
+5. Diff view, metrics (disturbance, score delta), and explanation
+
+### Journey C — proactive re-optimize
+
+1. User has a valid plan but finds the layout suboptimal (e.g. sessions
+   clustered, poor recovery spread)
+2. User clicks **Optimize plan** (visible whenever a plan exists and
+   there is no pending conflict)
+3. A neutral `state_changed` trigger runs Re-optimize over the full
+   plan, respecting all current busy blocks
+4. Diff view and explanation show what moved and why
 
 ## 9. AI methods used
 
-| Method | Tier | Where it runs |
-|--------|------|---------------|
-| Backtracking + forward checking | MVP | Initial Solver, re-validation |
-| Hill climbing | MVP | Small-scope replan with disturbance penalty |
-| Greedy baseline | MVP | Offline comparison |
-| Genetic algorithm | Advanced | Whole-plan optimization on top of CSP |
-| Simulated annealing | Advanced | Large-scope replan |
-| A\* / Beam | Stretch | Heuristic alternative to CSP for initial solver |
-| Random restart, rule-based | Stretch | Additional baselines |
+| Method                          | Tier     | Where it runs                                   |
+| ------------------------------- | -------- | ----------------------------------------------- |
+| Backtracking + forward checking | MVP      | Initial Solver, re-validation                   |
+| Hill climbing                   | MVP      | Small-scope replan with disturbance penalty     |
+| Greedy baseline                 | MVP      | Offline comparison                              |
+| Genetic algorithm               | Advanced | Whole-plan optimization on top of CSP           |
+| Simulated annealing             | Advanced | Large-scope replan                              |
+| A\* / Beam                      | Stretch  | Heuristic alternative to CSP for initial solver |
+| Random restart, rule-based      | Stretch  | Additional baselines                            |
 
 Every method runs in a real user-facing scenario.
 
