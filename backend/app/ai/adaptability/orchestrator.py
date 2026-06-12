@@ -77,7 +77,9 @@ def orchestrate_replan(
         score_delta=out.scores.total - plan.scores.total,
     )
     result = ReplanResult(plan=out, diff=diff, metrics=metrics)
-    result.explanation = explain_replan(result, constraints, affected_count=len(affected))
+    result.explanation = explain_replan(
+        result, constraints, affected_count=len(affected) or None
+    )
     result.reason = result.explanation.text_summary
     return result
 
